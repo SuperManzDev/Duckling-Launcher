@@ -53,7 +53,6 @@
   {"id": "helios_wings", "name": "Helios Wings", "slot": "back"},
   {"id": "aurora_fox", "name": "Aurora Fox", "slot": "shoulders"},
   {"id": "arc_gauntlets", "name": "Arc Gauntlets", "slot": "arms"},
-  {"id": "aurora_visor", "name": "Aurora Visor", "slot": "head"},
   {"id": "aetherglass_wings", "name": "Aetherglass Wings", "slot": "back"},
   {"id": "cinder_drake_wings", "name": "Cinder Drake Wings", "slot": "back"},
   {"id": "nocturne_wings", "name": "Nocturne Wings", "slot": "back"},

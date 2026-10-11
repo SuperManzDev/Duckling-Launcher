@@ -121,7 +121,9 @@ impl Content {
     /// Load everything under `dir`; missing lists just mean none yet.
     pub fn load(dir: &Path) -> Result<Self, String> {
         let mut content = Self::default();
-        for entry in read_list(&dir.join("cosmetics.json"))? {
+        let cosmetics = read_list(&dir.join("cosmetics.json"))?;
+        check_unique(&cosmetics, "cosmetic")?;
+        for entry in cosmetics {
             let at = |ext: &str| dir.join("cosmetics").join(format!("{}.{ext}", entry.id));
             if !SLOTS.contains(&entry.slot.as_str()) {
                 return Err(format!(
@@ -185,7 +187,9 @@ impl Content {
                 mesh,
             });
         }
-        for entry in read_list(&dir.join("emotes.json"))? {
+        let emotes = read_list(&dir.join("emotes.json"))?;
+        check_unique(&emotes, "emote")?;
+        for entry in emotes {
             check_id(&entry.id)?;
             let path = dir
                 .join("emotes")
@@ -257,6 +261,15 @@ fn read_list(path: &Path) -> Result<Vec<Entry>, String> {
         Ok(text) => serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display())),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
         Err(e) => Err(format!("{}: {e}", path.display())),
+    }
+}
+
+/// Each id once: a second entry would share the first one's files (and show twice).
+fn check_unique(entries: &[Entry], what: &str) -> Result<(), String> {
+    let mut seen = std::collections::HashSet::new();
+    match entries.iter().find(|e| !seen.insert(e.id.as_str())) {
+        Some(twice) => Err(format!("{what} {} is listed twice", twice.id)),
+        None => Ok(()),
     }
 }
 
@@ -539,6 +552,12 @@ mod tests {
             br#"[{"id":"halo","name":"Halo","slot":"tail"}]"#,
         );
         assert!(Content::load(d).unwrap_err().contains("slot"));
+        write(
+            d,
+            "cosmetics.json",
+            br#"[{"id":"halo","name":"Halo","slot":"head"},{"id":"halo","name":"Halo","slot":"face"}]"#,
+        );
+        assert!(Content::load(d).unwrap_err().contains("listed twice"));
         write(
             d,
             "cosmetics.json",
