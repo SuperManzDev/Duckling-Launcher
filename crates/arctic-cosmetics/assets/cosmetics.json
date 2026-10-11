@@ -49,7 +49,6 @@
   {"id": "copper_belt", "name": "Copper Belt", "slot": "body"},
   {"id": "crystal_pendant", "name": "Crystal Pendant", "slot": "body"},
   {"id": "explorer_sash", "name": "Explorer Sash", "slot": "body"},
-  {"id": "frost_brooch", "name": "Frost Brooch", "slot": "body"},
   {"id": "helios_wings", "name": "Helios Wings", "slot": "back"},
   {"id": "aurora_fox", "name": "Aurora Fox", "slot": "shoulders"},
   {"id": "arc_gauntlets", "name": "Arc Gauntlets", "slot": "arms"},
