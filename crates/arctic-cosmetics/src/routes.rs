@@ -391,6 +391,8 @@ struct LookBody {
     cape: Option<CapePart>,
     /// Worn 3D cosmetics by catalog id; left out, the current ones stay.
     cosmetics: Option<Vec<String>>,
+    /// How they're worn, by id; left out, the current fits stay (for cosmetics still worn).
+    fit: Option<std::collections::BTreeMap<String, crate::store::Fit>>,
 }
 
 /// Replace the player's whole look. `null` parts are cleared.
@@ -405,19 +407,22 @@ async fn set_look(
         return error(StatusCode::UNAUTHORIZED, "sign in first");
     };
     let t = now();
+    let current = match state.store.look(&uuid) {
+        Ok(current) => current,
+        Err(e) => return db_error("look", e),
+    };
     let cosmetics = match body.cosmetics {
         Some(ids) => match state.content.check_worn(&ids) {
             Ok(ids) => ids,
             Err(e) => return error(StatusCode::BAD_REQUEST, &e),
         },
-        None => match state.store.look(&uuid) {
-            Ok(current) => current.cosmetics,
-            Err(e) => return db_error("look", e),
-        },
+        None => current.cosmetics,
     };
+    let fit = crate::store::fits_for(&cosmetics, body.fit.as_ref().unwrap_or(&current.fit));
     let mut look = Look {
         model: "classic".into(),
         cosmetics,
+        fit,
         ..Look::default()
     };
     if let Some(skin) = body.skin {

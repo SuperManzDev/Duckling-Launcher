@@ -23,6 +23,8 @@ pub struct PlayerEntry {
     pub cape: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub cosmetics: Vec<String>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub fit: std::collections::BTreeMap<String, crate::store::Fit>,
     pub arctic: bool,
 }
 
@@ -35,7 +37,13 @@ pub struct Playing {
 }
 
 /// Look columns as read from a row.
-type LookRow = (Option<String>, String, Option<String>, Vec<String>);
+type LookRow = (
+    Option<String>,
+    String,
+    Option<String>,
+    Vec<String>,
+    std::collections::BTreeMap<String, crate::store::Fit>,
+);
 
 impl Store {
     /// Older databases get the check-in, cosmetics and emote columns.
@@ -52,6 +60,7 @@ impl Store {
             ("cosmetics", "TEXT"),
             ("emote", "TEXT"),
             ("emote_at", "INTEGER"),
+            ("fit", "TEXT"),
         ] {
             if !columns.iter().any(|n| n == column) {
                 conn.execute_batch(&format!("ALTER TABLE players ADD COLUMN {column} {kind}"))?;
@@ -82,10 +91,11 @@ impl Store {
     ) -> rusqlite::Result<Vec<(String, PlayerEntry)>> {
         let conn = self.conn();
         let since = now.saturating_sub(ONLINE_WINDOW_SECS) as i64;
-        let mut own = conn
-            .prepare_cached("SELECT skin, model, cape, cosmetics FROM players WHERE uuid = ?1")?;
+        let mut own = conn.prepare_cached(
+            "SELECT skin, model, cape, cosmetics, fit FROM players WHERE uuid = ?1",
+        )?;
         let mut playing = conn.prepare_cached(
-            "SELECT skin, model, cape, cosmetics FROM players
+            "SELECT skin, model, cape, cosmetics, fit FROM players
              WHERE playing_as = ?1 AND last_online >= ?2
              ORDER BY last_online DESC LIMIT 1",
         )?;
@@ -95,6 +105,7 @@ impl Store {
                 r.get(1)?,
                 r.get(2)?,
                 crate::store::cosmetics_column(r.get(3)?),
+                crate::store::fit_column(r.get(4)?),
             ))
         };
         let mut out = Vec::new();
@@ -104,7 +115,7 @@ impl Store {
             let arctic = current.is_some();
             // The account's own look first; on offline servers, the look of
             // whoever is on Arctic as this UUID right now.
-            let Some((skin, model, cape, cosmetics)) = owned.or(current) else {
+            let Some((skin, model, cape, cosmetics, fit)) = owned.or(current) else {
                 continue;
             };
             if arctic || skin.is_some() || cape.is_some() || !cosmetics.is_empty() {
@@ -115,6 +126,7 @@ impl Store {
                         model,
                         cape,
                         cosmetics,
+                        fit,
                         arctic,
                     },
                 ));
@@ -186,6 +198,7 @@ mod tests {
                 model: "classic".into(),
                 cape: Some("c".repeat(40)),
                 cosmetics: vec!["halo".into()],
+                fit: Default::default(),
             },
             1,
         )

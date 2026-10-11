@@ -708,6 +708,32 @@ async fn cosmetics_are_worn_and_emotes_relayed() {
     .await;
     assert_eq!(found[UUID]["cosmetics"], json!(["halo", "frost_wings"]));
 
+    // How they sit: kept within limits, only for worn ones, and kept when a client leaves it out.
+    let (s, v) = put(json!({"cosmetics": ["halo", "frost_wings"],
+        "fit": {"halo": {"up": 40, "forward": -1}, "frost_wings": {"mirror": true}, "nope": {"up": 1}}}))
+    .await;
+    assert_eq!(s, StatusCode::OK, "{v}");
+    assert_eq!(
+        v["fit"],
+        json!({"halo": {"up": 6, "forward": -1}, "frost_wings": {"mirror": true}})
+    );
+    let (_, v) = put(json!({"cosmetics": ["halo"]})).await;
+    assert_eq!(v["fit"], json!({"halo": {"up": 6, "forward": -1}}));
+    let (_, found) = call(
+        &app,
+        "GET",
+        &format!("/v1/players?uuids={UUID}"),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(
+        found[UUID]["fit"],
+        json!({"halo": {"up": 6, "forward": -1}})
+    );
+    let (_, v) = put(json!({"cosmetics": ["halo", "frost_wings"], "fit": {}})).await;
+    assert!(v.get("fit").is_none(), "{v}");
+
     // Emotes show for players on Arctic right now.
     let (s, _) = call(
         &app,

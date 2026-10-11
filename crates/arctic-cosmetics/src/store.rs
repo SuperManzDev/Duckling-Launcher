@@ -5,7 +5,9 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use rusqlite::{Connection, OptionalExtension, params};
-use serde::Serialize;
+use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
 
 pub struct Store {
     db: Mutex<Connection>,
@@ -21,6 +23,50 @@ pub struct Look {
     /// Worn 3D cosmetics (catalog ids, one per slot).
     #[serde(default)]
     pub cosmetics: Vec<String>,
+    /// How some of them are worn, by id (only worn ones).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub fit: BTreeMap<String, Fit>,
+}
+
+/// Half pixels a face cosmetic can move up or down.
+pub const FIT_UP: i8 = 6;
+/// Half pixels it can move forward or back.
+pub const FIT_FORWARD: i8 = 4;
+
+/// How a cosmetic sits: moved (in half pixels: up, toward the face), or worn on the other side.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Fit {
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub up: i8,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub forward: i8,
+    /// A one-sided cosmetic (a shoulder pet) worn on the other side, mirrored.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub mirror: bool,
+}
+
+fn is_zero(v: &i8) -> bool {
+    *v == 0
+}
+
+impl Fit {
+    /// Within its limits, or None when it changes nothing.
+    pub fn clamped(&self) -> Option<Fit> {
+        let fit = Fit {
+            up: self.up.clamp(-FIT_UP, FIT_UP),
+            forward: self.forward.clamp(-FIT_FORWARD, FIT_FORWARD),
+            mirror: self.mirror,
+        };
+        (fit != Fit::default()).then_some(fit)
+    }
+}
+
+/// Fits for worn cosmetics only, within their limits.
+pub fn fits_for(worn: &[String], fit: &BTreeMap<String, Fit>) -> BTreeMap<String, Fit> {
+    fit.iter()
+        .filter(|(id, _)| worn.contains(id))
+        .filter_map(|(id, f)| f.clamped().map(|f| (id.clone(), f)))
+        .collect()
 }
 
 impl Store {
@@ -142,7 +188,7 @@ impl Store {
         Ok(self
             .conn()
             .query_row(
-                "SELECT skin, model, cape, cosmetics FROM players WHERE uuid = ?1",
+                "SELECT skin, model, cape, cosmetics, fit FROM players WHERE uuid = ?1",
                 [uuid],
                 |r| {
                     Ok(Look {
@@ -150,6 +196,7 @@ impl Store {
                         model: r.get(1)?,
                         cape: r.get(2)?,
                         cosmetics: cosmetics_column(r.get(3)?),
+                        fit: fit_column(r.get(4)?),
                     })
                 },
             )
@@ -162,7 +209,7 @@ impl Store {
 
     pub fn set_look(&self, uuid: &str, look: &Look, now: u64) -> rusqlite::Result<()> {
         self.conn().execute(
-            "UPDATE players SET skin = ?2, model = ?3, cape = ?4, cosmetics = ?5, updated = ?6
+            "UPDATE players SET skin = ?2, model = ?3, cape = ?4, cosmetics = ?5, updated = ?6, fit = ?7
              WHERE uuid = ?1",
             params![
                 uuid,
@@ -170,7 +217,8 @@ impl Store {
                 look.model,
                 look.cape,
                 serde_json::to_string(&look.cosmetics).unwrap_or_default(),
-                now as i64
+                now as i64,
+                (!look.fit.is_empty()).then(|| serde_json::to_string(&look.fit).unwrap_or_default()),
             ],
         )?;
         Ok(())
@@ -192,6 +240,13 @@ impl Store {
             })
             .optional()
     }
+}
+
+/// The `fit` column: a JSON object by cosmetic id (NULL or broken = none).
+pub(crate) fn fit_column(value: Option<String>) -> BTreeMap<String, Fit> {
+    value
+        .and_then(|v| serde_json::from_str(&v).ok())
+        .unwrap_or_default()
 }
 
 /// The `cosmetics` column: a JSON list of ids (NULL or broken = none).
@@ -216,6 +271,15 @@ mod tests {
             model: "slim".into(),
             cape: None,
             cosmetics: vec!["halo".into()],
+            fit: [(
+                "halo".to_owned(),
+                Fit {
+                    up: -2,
+                    forward: 1,
+                    mirror: false,
+                },
+            )]
+            .into(),
         };
         s.set_look("a", &look, 2).unwrap();
         assert_eq!(s.look("a").unwrap(), look);
