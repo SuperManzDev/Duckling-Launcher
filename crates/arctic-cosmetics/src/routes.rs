@@ -50,7 +50,8 @@ pub struct AppState {
     /// Behind a reverse proxy: take the client address from
     /// `X-Forwarded-For` instead of the connection.
     pub trust_proxy: bool,
-    /// Who may moderate (`ARCTIC_COSMETICS_ADMIN_KEYS`).
+    /// Who may moderate (`ARCTIC_COSMETICS_ADMIN_KEYS`) or only read
+    /// (`ARCTIC_COSMETICS_READ_KEYS`).
     pub admins: crate::admin::Moderators,
 }
 
@@ -81,9 +82,21 @@ pub fn router(state: Shared) -> Router {
 }
 
 /// The moderator whose key is in `X-Admin-Key`, if it's a valid one.
+/// Read-only keys are not moderators: anything that changes data uses this.
 fn moderator(state: &Shared, headers: &HeaderMap) -> Option<String> {
+    match caller(state, headers)? {
+        (name, crate::admin::Role::Moderator) => Some(name),
+        (_, crate::admin::Role::Reader) => None,
+    }
+}
+
+/// Whoever's key is in `X-Admin-Key`, moderator or read-only.
+fn caller(state: &Shared, headers: &HeaderMap) -> Option<(String, crate::admin::Role)> {
     let key = headers.get("x-admin-key")?.to_str().ok()?;
-    state.admins.identify(key).map(str::to_owned)
+    state
+        .admins
+        .identify(key)
+        .map(|(name, role)| (name.to_owned(), role))
 }
 
 fn now() -> u64 {

@@ -9,6 +9,10 @@
 //!   (keys 16+ chars). They sign in to `/admin` and use the `X-Admin-Key` header.
 //!   Add or remove a person by editing the list. `ARCTIC_COSMETICS_ADMIN_KEY`
 //!   (one key, the moderator "admin") still works.
+//! - `ARCTIC_COSMETICS_READ_KEYS` (optional): read-only keys, `name:key,...`
+//!   (16+ chars, names not shared with moderators). They read crash reports
+//!   and suggestions (`/v1/admin/crashes`, `/v1/admin/suggestions`) and nothing
+//!   else; every change is refused. Their reads show in History by name.
 //! - `ARCTIC_COSMETICS_TRUST_PROXY=1`: rate-limit by `X-Forwarded-For` (only
 //!   behind a reverse proxy that sets it).
 
@@ -18,6 +22,7 @@ mod catalog;
 mod chat;
 mod content;
 mod crashes;
+mod filters;
 mod friends;
 mod gallery;
 mod gallery_seed;
@@ -108,7 +113,8 @@ async fn run() -> Result<(), String> {
         admins: admin::Moderators::parse(
             std::env::var("ARCTIC_COSMETICS_ADMIN_KEYS").ok().as_deref(),
             std::env::var("ARCTIC_COSMETICS_ADMIN_KEY").ok().as_deref(),
-        ),
+        )
+        .with_readers(std::env::var("ARCTIC_COSMETICS_READ_KEYS").ok().as_deref()),
     };
     let state = Arc::new(state);
     tokio::spawn(routes::server_pinger(state.clone(), SERVER_PING_EVERY));

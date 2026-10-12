@@ -50,7 +50,8 @@ async fn app() -> Router {
         admins: crate::admin::Moderators::parse(
             Some("alice:alice-key-alice-key,bob:bob-key-bob-key-bob"),
             Some("admin-key-admin-key"),
-        ),
+        )
+        .with_readers(Some("ai:reader-key-reader-key")),
     }))
 }
 
@@ -238,6 +239,170 @@ async fn dashboard_is_served_only_with_moderators_configured() {
     let (s, me) = admin_call(&app, "admin-key-admin-key", "GET", "/v1/admin/me", None).await;
     assert_eq!(s, StatusCode::OK);
     assert_eq!(me["name"], "admin");
+    assert_eq!(me["role"], "moderator");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn read_only_keys_read_crashes_and_suggestions_and_change_nothing() {
+    const READER: &str = "reader-key-reader-key";
+    const ALICE: &str = "alice-key-alice-key";
+    let app = app().await;
+    for (os, launcher) in [("windows", "0.3.3"), ("linux", "0.3.4")] {
+        let report = json!({
+            "launcher": launcher, "game": "1.21.11", "loader": "fabric", "os": os,
+            "title": "Minecraft ran out of memory",
+            "log": "x\njava.lang.OutOfMemoryError: Out of stack space.\nCaused by: deep"
+        });
+        let (s, _) = call(&app, "POST", "/v1/crash", None, Some(report)).await;
+        assert_eq!(s, StatusCode::OK);
+    }
+    let suggestion = json!({"kind": "bug", "text": "lag", "contact": "me@example.com"});
+    let (s, _) = call(&app, "POST", "/v1/suggest", None, Some(suggestion)).await;
+    assert_eq!(s, StatusCode::OK);
+
+    let (s, me) = admin_call(&app, READER, "GET", "/v1/admin/me", None).await;
+    assert_eq!((s, me["role"].as_str()), (StatusCode::OK, Some("reader")));
+    let (s, list) = admin_call(
+        &app,
+        READER,
+        "GET",
+        "/v1/admin/crashes?status=open&os=linux&game=1.21.11&since=2020-01-01&limit=5",
+        None,
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    let group = &list["groups"][0];
+    assert_eq!(group["count"], 1);
+    assert_eq!(group["status"], "open");
+    assert_eq!(group["diagnosis"], "Minecraft ran out of memory");
+    assert_eq!(
+        group["first_error"],
+        "java.lang.OutOfMemoryError: Out of stack space."
+    );
+    assert_eq!(group["root_cause"], "Caused by: deep");
+    assert!(group.get("log").is_none());
+    let id = group["id"].as_i64().unwrap();
+    let (s, detail) = admin_call(
+        &app,
+        READER,
+        "GET",
+        &format!("/v1/admin/crashes/{id}"),
+        None,
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    assert_eq!(detail["reports"].as_array().unwrap().len(), 2);
+    assert!(detail["log"].as_str().unwrap().contains("OutOfMemoryError"));
+    for bad in ["status=closed", "since=soon", "limit=0", "limit=501"] {
+        let (s, _) = admin_call(
+            &app,
+            READER,
+            "GET",
+            &format!("/v1/admin/crashes?{bad}"),
+            None,
+        )
+        .await;
+        assert_eq!(s, StatusCode::BAD_REQUEST, "{bad}");
+    }
+
+    let (_, list) = admin_call(
+        &app,
+        READER,
+        "GET",
+        "/v1/admin/suggestions?status=open&kind=bug",
+        None,
+    )
+    .await;
+    assert_eq!(list["entries"][0]["contact"], "(hidden)");
+    let sid = list["entries"][0]["id"].as_i64().unwrap();
+    let (_, sdetail) = admin_call(
+        &app,
+        READER,
+        "GET",
+        &format!("/v1/admin/suggestions/{sid}"),
+        None,
+    )
+    .await;
+    assert_eq!(sdetail["contact"], "(hidden)");
+    let (_, list) = admin_call(&app, ALICE, "GET", "/v1/admin/suggestions", None).await;
+    assert_eq!(list["entries"][0]["contact"], "me@example.com");
+
+    // Every change and every other moderation page is refused.
+    let resolve = json!({"status": "resolved", "note": "fixed", "fixed_in": "0.3.5"});
+    let refused = [
+        (
+            "POST",
+            format!("/v1/admin/crashes/{id}"),
+            Some(resolve.clone()),
+        ),
+        ("DELETE", format!("/v1/admin/crashes/{id}"), None),
+        (
+            "POST",
+            format!("/v1/admin/suggestions/{sid}"),
+            Some(json!({"done": true})),
+        ),
+        ("DELETE", format!("/v1/admin/suggestions/{sid}"), None),
+        ("GET", "/v1/admin/gallery?queue=pending".to_owned(), None),
+        ("GET", "/v1/admin/log".to_owned(), None),
+        ("GET", "/v1/admin/servers".to_owned(), None),
+    ];
+    for (method, uri, body) in refused {
+        let (s, _) = admin_call(&app, READER, method, &uri, body).await;
+        assert_eq!(s, StatusCode::FORBIDDEN, "{method} {uri}");
+    }
+
+    // A moderator resolves it; the reader sees it gone from the open list.
+    let vague = json!({"status": "resolved", "fixed_in": "next release"});
+    let (s, _) = admin_call(
+        &app,
+        ALICE,
+        "POST",
+        &format!("/v1/admin/crashes/{id}"),
+        Some(vague),
+    )
+    .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+    let (s, _) = admin_call(
+        &app,
+        ALICE,
+        "POST",
+        &format!("/v1/admin/crashes/{id}"),
+        Some(resolve),
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    let (_, list) = admin_call(&app, READER, "GET", "/v1/admin/crashes?status=open", None).await;
+    assert!(list["groups"].as_array().unwrap().is_empty());
+    let (_, list) = admin_call(
+        &app,
+        READER,
+        "GET",
+        "/v1/admin/crashes?status=resolved",
+        None,
+    )
+    .await;
+    assert_eq!(list["groups"][0]["fixed_in"], "0.3.5");
+    assert_eq!(list["groups"][0]["resolved_by"], "alice");
+
+    // Reads are noted apart from decisions, the first of each minute only.
+    let (_, reads) = admin_call(&app, ALICE, "GET", "/v1/admin/log?reads=1", None).await;
+    let reads = reads["entries"].as_array().unwrap();
+    assert_eq!(reads.len(), 1);
+    assert_eq!(reads[0]["moderator"], "ai");
+    assert!(
+        reads[0]["detail"]
+            .as_str()
+            .unwrap()
+            .starts_with("/v1/admin/crashes?status=open&os=linux")
+    );
+    let (_, log) = admin_call(&app, ALICE, "GET", "/v1/admin/log", None).await;
+    let entries = log["entries"].as_array().unwrap();
+    assert!(entries.iter().all(|e| e["action"] != "read"));
+    assert!(
+        entries
+            .iter()
+            .any(|e| e["moderator"] == "alice" && e["action"] == "resolve")
+    );
 }
 
 async fn call(

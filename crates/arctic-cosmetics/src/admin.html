@@ -62,6 +62,8 @@ let key = sessionStorage.getItem(KEY) || "";
 let me = null;
 let tab = "gallery";
 let queue = "pending";
+let crashStatus = "open";
+function canChange() { return me && me.role !== "reader"; }
 
 function el(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -107,12 +109,15 @@ function when(t) { return new Date(t * 1000).toLocaleString(); }
 
 async function render() {
   if (!me) { try { me = await api("/v1/admin/me"); } catch (_) { return login(); } }
-  const tabs = [["gallery", "Gallery" + (me.pending ? " (" + me.pending + ")" : "")], ["servers", "Servers"], ["suggestions", "Suggestions"], ["crashes", "Crashes"], ["log", "History"]];
+  const tabs = canChange()
+    ? [["gallery", "Gallery" + (me.pending ? " (" + me.pending + ")" : "")], ["servers", "Servers"], ["suggestions", "Suggestions"], ["crashes", "Crashes"], ["log", "History"]]
+    : [["crashes", "Crashes"], ["suggestions", "Suggestions"]];
+  if (!tabs.some(([id]) => id === tab)) tab = tabs[0][0];
   const nav = el("nav", {}, ...tabs.map(([id, label]) =>
     el("button", { class: tab === id ? "on" : "", onclick: () => { tab = id; render(); } }, label)));
   const out = el("div", {}, "Loading…");
   app.replaceChildren(
-    el("header", {}, el("h1", {}, "Arctic moderation"), el("span", { class: "muted" }, "Signed in as " + me.name),
+    el("header", {}, el("h1", {}, "Arctic moderation"), el("span", { class: "muted" }, "Signed in as " + me.name + (canChange() ? "" : " (read-only)")),
       el("button", { onclick: () => { key = ""; me = null; sessionStorage.removeItem(KEY); login(); } }, "Sign out")),
     el("main", {}, nav, out));
   try {
@@ -184,28 +189,62 @@ async function servers(out) {
     ? el("table", {}, el("tbody", {}, ...rows)) : el("div", { class: "empty" }, "Nothing here."));
 }
 
+function resolvedText(g) {
+  return "Resolved " + when(g.resolved_at) + (g.resolved_by ? " by " + g.resolved_by : "")
+    + (g.fixed_in ? " · fixed in " + g.fixed_in : "") + (g.note ? " · " + g.note : "");
+}
+
 async function crashes(out) {
-  const data = await api("/v1/admin/crashes");
+  const states = [["open", "Open"], ["resolved", "Resolved"], ["all", "All"]];
+  const bar = el("nav", {}, ...states.map(([id, label]) =>
+    el("button", { class: crashStatus === id ? "on" : "", onclick: () => { crashStatus = id; render(); } }, label)));
+  const data = await api("/v1/admin/crashes?status=" + crashStatus);
   const rows = data.groups.map((g) => el("tr", {},
-    el("td", {}, el("strong", {}, g.title || "Crash"), el("div", { class: "muted" }, "Minecraft " + g.game)),
-    el("td", {}, el("span", { class: "badge" }, g.count + (g.count === 1 ? " report" : " reports"))),
+    el("td", {}, el("strong", {}, g.diagnosis || g.first_error || g.title || "Crash"),
+      el("div", { class: "muted" }, ["Minecraft " + g.game, g.loader, g.oses.join(", "), "launcher " + g.launchers.join(", ")].filter(Boolean).join(" · ")),
+      ...(g.diagnosis && g.first_error ? [el("div", { class: "muted" }, g.first_error)] : []),
+      ...(g.status === "resolved" ? [el("div", { class: "muted" }, resolvedText(g))] : [])),
+    el("td", {}, el("span", { class: "badge" }, g.count + (g.count === 1 ? " report" : " reports") + (g.status === "resolved" ? " · resolved" : ""))),
     el("td", {}, when(g.last)),
     el("td", {}, el("button", { onclick: () => openCrash(g.id) }, "Open"))));
-  out.replaceChildren(rows.length
-    ? el("table", {}, el("tbody", {}, ...rows)) : el("div", { class: "empty" }, "No crash reports yet."));
+  out.replaceChildren(bar, rows.length
+    ? el("table", {}, el("tbody", {}, ...rows)) : el("div", { class: "empty" }, "No crash reports here."));
+}
+
+async function setCrashStatus(id, body) {
+  try { await api("/v1/admin/crashes/" + id, { method: "POST", body: JSON.stringify(body) }); render(); } catch (e) { alert(e.message); }
 }
 
 async function openCrash(id) {
   try {
     const d = await api("/v1/admin/crashes/" + id);
-    const back = el("button", { onclick: () => render() }, "Back");
-    const del = el("button", { class: "bad", onclick: async () => {
-      if (!confirm("Delete every report of this crash?")) return;
-      try { await api("/v1/admin/crashes/" + id, { method: "DELETE" }); render(); } catch (e) { alert(e.message); }
-    } }, "Delete this crash");
+    const buttons = [el("button", { onclick: () => render() }, "Back")];
+    if (canChange() && d.status === "resolved") {
+      buttons.push(el("button", { onclick: () => setCrashStatus(id, { status: "open" }) }, "Reopen"));
+    } else if (canChange()) {
+      buttons.push(el("button", { class: "good", onclick: () => {
+        const fixed_in = prompt("Launcher version with the fix, as a version number (for example 0.3.5). The crash coming back from that version or a newer one reopens it. Leave empty if unsure: then only a launcher newer than any that sent it reopens it.", "");
+        if (fixed_in === null) return;
+        const note = prompt("A short note (optional)", fixed_in.trim() ? "fixed in " + fixed_in.trim() : "");
+        if (note === null) return;
+        setCrashStatus(id, { status: "resolved", note, fixed_in });
+      } }, "Mark resolved"));
+    }
+    if (canChange()) {
+      buttons.push(el("button", { class: "bad", onclick: async () => {
+        if (!confirm("Delete every report of this crash?")) return;
+        try { await api("/v1/admin/crashes/" + id, { method: "DELETE" }); render(); } catch (e) { alert(e.message); }
+      } }, "Delete this crash"));
+    }
+    const lines = [d.diagnosis && "Diagnosis: " + d.diagnosis, d.first_error && "First error: " + d.first_error,
+      d.root_cause && "Root cause: " + d.root_cause, d.status === "resolved" && resolvedText(d)].filter(Boolean);
+    const reports = d.reports.map((r) => when(r.at) + " · launcher " + r.launcher + " · " + r.os + " · Minecraft " + r.game + " " + r.loader);
     app.querySelector("main").replaceChildren(
-      el("nav", {}, back, del),
+      el("nav", {}, ...buttons),
       el("div", { class: "muted" }, "Minecraft " + d.game + " · " + d.loader + " · " + d.os + " · launcher " + d.launcher + " · " + when(d.at)),
+      ...lines.map((l) => el("div", {}, l)),
+      el("details", {}, el("summary", {}, d.reports.length + (d.reports.length === 1 ? " report" : " reports") + " of this crash"),
+        ...reports.map((r) => el("div", { class: "muted" }, r))),
       el("pre", { style: "white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px" }, d.log));
   } catch (e) { alert(e.message); }
 }
@@ -226,6 +265,13 @@ async function openSuggestion(id) {
   try {
     const d = await api("/v1/admin/suggestions/" + id);
     const back = el("button", { onclick: () => render() }, "Back");
+    if (!canChange()) {
+      const pre = "white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px";
+      app.querySelector("main").replaceChildren(el("nav", {}, back),
+        el("div", { class: "muted" }, d.kind + " · " + d.os + " · launcher " + d.launcher + " · " + when(d.at)),
+        el("pre", { style: pre }, d.text), ...(d.log ? [el("div", { class: "muted" }, "Attached log"), el("pre", { style: pre }, d.log)] : []));
+      return;
+    }
     const done = el("button", { onclick: async () => {
       try { await api("/v1/admin/suggestions/" + id, { method: "POST", body: JSON.stringify({ done: !d.done }) }); render(); } catch (e) { alert(e.message); }
     } }, d.done ? "Mark as open" : "Mark as done");
@@ -242,12 +288,16 @@ async function openSuggestion(id) {
   } catch (e) { alert(e.message); }
 }
 
+let historyReads = false;
+
 async function history(out) {
-  const data = await api("/v1/admin/log");
+  const bar = el("nav", {}, ...[[false, "Decisions"], [true, "Read-only keys"]].map(([reads, label]) =>
+    el("button", { class: historyReads === reads ? "on" : "", onclick: () => { historyReads = reads; render(); } }, label)));
+  const data = await api("/v1/admin/log" + (historyReads ? "?reads=1" : ""));
   const rows = data.entries.map((e) => el("tr", {},
     el("td", {}, when(e.at)), el("td", {}, e.moderator), el("td", {}, el("span", { class: "badge" }, e.action)), el("td", {}, e.detail)));
-  out.replaceChildren(rows.length
-    ? el("table", {}, el("tbody", {}, ...rows)) : el("div", { class: "empty" }, "No decisions yet."));
+  out.replaceChildren(bar, rows.length
+    ? el("table", {}, el("tbody", {}, ...rows)) : el("div", { class: "empty" }, historyReads ? "No reads yet." : "No decisions yet."));
 }
 
 if (key) render(); else login();

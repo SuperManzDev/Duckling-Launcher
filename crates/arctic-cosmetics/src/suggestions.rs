@@ -42,6 +42,16 @@ pub struct Detail {
     pub log: String,
 }
 
+/// What a suggestion list is narrowed to; `None` doesn't narrow.
+#[derive(Debug, Clone, Default)]
+pub struct Filter {
+    pub done: Option<bool>,
+    /// `idea` or `bug`.
+    pub kind: Option<&'static str>,
+    /// Sent from this Unix time on.
+    pub since: Option<i64>,
+}
+
 /// `idea` or `bug`; anything else is an idea.
 pub fn clean_kind(kind: &str) -> &'static str {
     if kind.trim().eq_ignore_ascii_case("bug") {
@@ -117,13 +127,23 @@ impl Store {
     }
 
     /// Ones not yet dealt with first, newest first.
-    pub fn suggestions(&self, limit: usize) -> rusqlite::Result<Vec<Entry>> {
+    pub fn suggestions(&self, filter: &Filter, limit: usize) -> rusqlite::Result<Vec<Entry>> {
         let conn = self.conn();
         let mut stmt = conn.prepare(
             "SELECT id, at, kind, text, contact, launcher, os, done, LENGTH(log) FROM suggestions
-             ORDER BY done, id DESC LIMIT ?1",
+             WHERE (?1 IS NULL OR done = ?1) AND (?2 IS NULL OR kind = ?2) AND at >= ?3
+             ORDER BY done, id DESC LIMIT ?4",
         )?;
-        stmt.query_map([limit as i64], Self::entry)?.collect()
+        stmt.query_map(
+            params![
+                filter.done.map(i64::from),
+                filter.kind,
+                filter.since.unwrap_or(0),
+                limit as i64
+            ],
+            Self::entry,
+        )?
+        .collect()
     }
 
     pub fn suggestion_detail(&self, id: i64) -> rusqlite::Result<Option<Detail>> {
@@ -188,14 +208,30 @@ mod tests {
             20,
         )
         .unwrap();
-        let all = s.suggestions(10).unwrap();
+        let all = s.suggestions(&Filter::default(), 10).unwrap();
         assert_eq!(all.len(), 2);
         assert_eq!((all[0].kind.as_str(), all[0].has_log), ("idea", false));
         assert_eq!(all[1].text, "a map wall\nlags");
         assert_eq!(all[1].kind, "bug");
         assert_eq!(s.suggestion_detail(id).unwrap().unwrap().log, "log text");
         assert!(s.suggestion_set_done(id, true).unwrap());
-        assert!(s.suggestions(10).unwrap()[1].done);
+        assert!(s.suggestions(&Filter::default(), 10).unwrap()[1].done);
+        let open = Filter {
+            done: Some(false),
+            ..Filter::default()
+        };
+        assert_eq!(s.suggestions(&open, 10).unwrap().len(), 1);
+        let bugs = Filter {
+            kind: Some("bug"),
+            since: Some(5),
+            ..Filter::default()
+        };
+        assert_eq!(s.suggestions(&bugs, 10).unwrap()[0].id, id);
+        let later = Filter {
+            since: Some(15),
+            ..Filter::default()
+        };
+        assert_eq!(s.suggestions(&later, 10).unwrap().len(), 1);
         assert!(s.suggestion_delete(id).unwrap());
         assert!(!s.suggestion_delete(id).unwrap());
     }
