@@ -1,12 +1,15 @@
 //! Moderation: the dashboard page and what it calls. Every call needs a
 //! moderator's key in `X-Admin-Key`; with no keys configured it's all off.
-//! Read-only keys get the crash and suggestion lists and details, nothing more:
+//! Read-only keys read everything the dashboard shows, in full, and change nothing:
 //!
+//! - `GET /v1/admin/gallery?queue=pending|listed|rejected|removed`: the skin gallery's queues
+//! - `GET /v1/admin/log` (`?reads=1`: read-only keys' reads): History
+//! - `GET /v1/admin/servers?state=pending|unverified|listed|curated|rejected` (see servers.rs)
 //! - `GET /v1/admin/crashes?status=open|resolved&os=&launcher=&game=&since=&limit=`:
 //!   groups of the same crash, each with its diagnosis, first error and root cause
 //! - `GET /v1/admin/crashes/{id}`: one report's full log and its group's reports
 //! - `GET /v1/admin/suggestions?status=open|done&kind=bug|idea&since=&limit=`
-//! - `GET /v1/admin/suggestions/{id}` (the contact is hidden from read-only keys)
+//! - `GET /v1/admin/suggestions/{id}`: one suggestion with its contact and details
 
 use axum::extract::{Path, Query, State};
 use std::collections::HashMap;
@@ -23,7 +26,7 @@ use crate::admin::Role;
 use crate::crashes::{self, Filter, Resolution};
 use crate::filters;
 use crate::gallery::Action;
-use crate::suggestions::{self, Filter as SuggestionFilter};
+use crate::suggestions::Filter as SuggestionFilter;
 
 const PAGE: &str = include_str!("../admin.html");
 /// Most history entries one request returns.
@@ -118,9 +121,10 @@ struct QueueQuery {
 async fn queue(
     State(state): State<Shared>,
     headers: HeaderMap,
+    uri: Uri,
     Query(q): Query<QueueQuery>,
 ) -> Response {
-    if moderator(&state, &headers).is_none() {
+    if viewer(&state, &headers, &uri).is_none() {
         return denied();
     }
     match state.store.gallery_admin_list(&q.queue) {
@@ -166,9 +170,10 @@ struct LogQuery {
 async fn log(
     State(state): State<Shared>,
     headers: HeaderMap,
+    uri: Uri,
     Query(q): Query<LogQuery>,
 ) -> Response {
-    if moderator(&state, &headers).is_none() {
+    if viewer(&state, &headers, &uri).is_none() {
         return denied();
     }
     match state.store.moderation_history(q.reads == "1", LOG_LIMIT) {
@@ -177,11 +182,11 @@ async fn log(
     }
 }
 
-/// Someone allowed to read crash reports and suggestions: a moderator or a
+/// Someone allowed to read what the dashboard shows: a moderator or a
 /// read-only key. A read-only key's reads go into History under its name, at
 /// most one entry a minute per key (the next one counts those left out), so a
 /// script reading many reports can't bury the moderators' decisions.
-fn viewer(state: &Shared, headers: &HeaderMap, uri: &Uri) -> Option<(String, Role)> {
+pub(super) fn viewer(state: &Shared, headers: &HeaderMap, uri: &Uri) -> Option<(String, Role)> {
     let (name, role) = caller(state, headers)?;
     if role == Role::Reader {
         let what = uri
@@ -408,30 +413,21 @@ impl SuggestionQuery {
 }
 
 /// Read-only keys don't see how to reach the person who wrote it.
-fn hide_contact(entry: &mut suggestions::Entry, role: Role) {
-    if role == Role::Reader && !entry.contact.is_empty() {
-        entry.contact = "(hidden)".into();
-    }
-}
-
 async fn suggestion_list(
     State(state): State<Shared>,
     headers: HeaderMap,
     uri: Uri,
     Query(q): Query<SuggestionQuery>,
 ) -> Response {
-    let Some((_, role)) = viewer(&state, &headers, &uri) else {
+    if viewer(&state, &headers, &uri).is_none() {
         return denied();
-    };
+    }
     let (filter, limit) = match q.filter() {
         Ok(f) => f,
         Err(message) => return error(StatusCode::BAD_REQUEST, message),
     };
     match state.store.suggestions(&filter, limit) {
-        Ok(mut entries) => {
-            entries.iter_mut().for_each(|e| hide_contact(e, role));
-            Json(json!({ "entries": entries })).into_response()
-        }
+        Ok(entries) => Json(json!({ "entries": entries })).into_response(),
         Err(e) => db_error("suggestions", e),
     }
 }
@@ -442,14 +438,11 @@ async fn suggestion_detail(
     uri: Uri,
     Path(id): Path<i64>,
 ) -> Response {
-    let Some((_, role)) = viewer(&state, &headers, &uri) else {
+    if viewer(&state, &headers, &uri).is_none() {
         return denied();
-    };
+    }
     match state.store.suggestion_detail(id) {
-        Ok(Some(mut detail)) => {
-            hide_contact(&mut detail.entry, role);
-            Json(detail).into_response()
-        }
+        Ok(Some(detail)) => Json(detail).into_response(),
         Ok(None) => error(StatusCode::NOT_FOUND, "not found"),
         Err(e) => db_error("suggestion detail", e),
     }

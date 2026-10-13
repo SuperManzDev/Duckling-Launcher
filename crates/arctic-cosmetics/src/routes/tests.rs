@@ -243,7 +243,7 @@ async fn dashboard_is_served_only_with_moderators_configured() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn read_only_keys_read_crashes_and_suggestions_and_change_nothing() {
+async fn read_only_keys_read_everything_in_full_and_change_nothing() {
     const READER: &str = "reader-key-reader-key";
     const ALICE: &str = "alice-key-alice-key";
     let app = app().await;
@@ -313,7 +313,7 @@ async fn read_only_keys_read_crashes_and_suggestions_and_change_nothing() {
         None,
     )
     .await;
-    assert_eq!(list["entries"][0]["contact"], "(hidden)");
+    assert_eq!(list["entries"][0]["contact"], "me@example.com");
     let sid = list["entries"][0]["id"].as_i64().unwrap();
     let (_, sdetail) = admin_call(
         &app,
@@ -323,11 +323,24 @@ async fn read_only_keys_read_crashes_and_suggestions_and_change_nothing() {
         None,
     )
     .await;
-    assert_eq!(sdetail["contact"], "(hidden)");
-    let (_, list) = admin_call(&app, ALICE, "GET", "/v1/admin/suggestions", None).await;
-    assert_eq!(list["entries"][0]["contact"], "me@example.com");
+    assert_eq!(sdetail["contact"], "me@example.com");
 
-    // Every change and every other moderation page is refused.
+    // Every list the dashboard shows reads in full.
+    for uri in [
+        "/v1/admin/gallery?queue=pending",
+        "/v1/admin/gallery?queue=rejected",
+        "/v1/admin/log",
+        "/v1/admin/log?reads=1",
+        "/v1/admin/servers?state=pending",
+        "/v1/admin/servers?state=unverified",
+        "/v1/admin/servers?state=listed",
+        "/v1/admin/servers?state=rejected",
+    ] {
+        let (s, _) = admin_call(&app, READER, "GET", uri, None).await;
+        assert_eq!(s, StatusCode::OK, "{uri}");
+    }
+
+    // Every change is refused.
     let resolve = json!({"status": "resolved", "note": "fixed", "fixed_in": "0.3.5"});
     let refused = [
         (
@@ -342,9 +355,16 @@ async fn read_only_keys_read_crashes_and_suggestions_and_change_nothing() {
             Some(json!({"done": true})),
         ),
         ("DELETE", format!("/v1/admin/suggestions/{sid}"), None),
-        ("GET", "/v1/admin/gallery?queue=pending".to_owned(), None),
-        ("GET", "/v1/admin/log".to_owned(), None),
-        ("GET", "/v1/admin/servers".to_owned(), None),
+        (
+            "POST",
+            "/v1/admin/gallery/some-skin".to_owned(),
+            Some(json!({"action": "approve"})),
+        ),
+        (
+            "POST",
+            "/v1/admin/servers/1".to_owned(),
+            Some(json!({"action": "approve"})),
+        ),
     ];
     for (method, uri, body) in refused {
         let (s, _) = admin_call(&app, READER, method, &uri, body).await;

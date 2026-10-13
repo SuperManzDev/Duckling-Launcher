@@ -170,9 +170,11 @@ struct ReviewQuery {
 async fn review(
     State(state): State<Shared>,
     headers: HeaderMap,
+    uri: axum::http::Uri,
     Query(q): Query<ReviewQuery>,
 ) -> Response {
-    if moderator(&state, &headers).is_none() {
+    // Moderators and read-only keys read the lists; only moderators decide (see `decide`).
+    if super::admin::viewer(&state, &headers, &uri).is_none() {
         return error(StatusCode::FORBIDDEN, "admins only");
     }
     let wanted = match q.state.as_deref().unwrap_or("pending") {
