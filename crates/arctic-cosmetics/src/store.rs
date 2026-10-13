@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
