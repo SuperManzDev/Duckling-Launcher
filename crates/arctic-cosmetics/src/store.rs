@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -106,7 +106,8 @@ impl Store {
                  created INTEGER NOT NULL,
                  downloads INTEGER NOT NULL DEFAULT 0,
                  reports INTEGER NOT NULL DEFAULT 0,
-                 hidden INTEGER NOT NULL DEFAULT 0
+                 hidden INTEGER NOT NULL DEFAULT 0,
+                 seed_key TEXT
              );
              CREATE UNIQUE INDEX IF NOT EXISTS gallery_unique ON gallery (texture, author_uuid);
              CREATE TABLE IF NOT EXISTS gallery_reports (
@@ -120,6 +121,8 @@ impl Store {
         };
         store.migrate_gallery_looks()?;
         store.migrate_gallery_status()?;
+        store.migrate_gallery_category()?;
+        store.migrate_gallery_seed_key()?;
         store.migrate_crashes()?;
         store.migrate_suggestions()?;
         store.migrate_presence()?;

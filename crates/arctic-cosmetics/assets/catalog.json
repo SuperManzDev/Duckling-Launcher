@@ -37,5 +37,8 @@
   {"id": "ember_breath", "name": "Ember Breath", "free": true},
   {"id": "ocean_current", "name": "Ocean Current", "free": true},
   {"id": "rune_awaken", "name": "Rune Awaken", "free": true},
-  {"id": "prism_shimmer", "name": "Prism Shimmer", "free": true}
+  {"id": "prism_shimmer", "name": "Prism Shimmer", "free": true},
+  {"id": "loading_circle", "name": "Loading Circle", "free": true, "fps": 16},
+  {"id": "loading_text", "name": "Loading Text", "free": true, "fps": 16},
+  {"id": "loading_both", "name": "Loading Combo", "free": true, "fps": 16}
 ]

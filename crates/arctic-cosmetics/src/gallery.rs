@@ -11,6 +11,20 @@ pub const HIDE_AFTER_REPORTS: i64 = 3;
 /// Most items one player can have in the gallery.
 pub const MAX_PER_AUTHOR: i64 = 50;
 pub const MAX_PAGE: usize = 48;
+/// Curated seed collections. Player-submitted skins use `community`.
+pub const COLLECTIONS: &[&str] = &[
+    "adventure",
+    "fantasy",
+    "gamer",
+    "animals",
+    "pvp",
+    "casual",
+    "community",
+];
+
+pub fn known_collection(value: &str) -> bool {
+    value.is_empty() || COLLECTIONS.contains(&value)
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Item {
@@ -19,6 +33,7 @@ pub struct Item {
     /// Texture hash.
     pub texture: String,
     pub model: String,
+    pub category: String,
     pub author: String,
     pub downloads: i64,
     pub created: i64,
@@ -106,10 +121,22 @@ pub enum PublishError {
 }
 
 impl Store {
+    #[cfg(test)]
     pub fn gallery_page(
         &self,
         sort: Sort,
         query: &str,
+        offset: usize,
+        limit: usize,
+    ) -> rusqlite::Result<Page> {
+        self.gallery_page_filtered(sort, query, "", offset, limit)
+    }
+
+    pub fn gallery_page_filtered(
+        &self,
+        sort: Sort,
+        query: &str,
+        category: &str,
         offset: usize,
         limit: usize,
     ) -> rusqlite::Result<Page> {
@@ -120,33 +147,55 @@ impl Store {
             Sort::New => "created DESC",
         };
         let sql = format!(
-            "SELECT id, name, texture, model, author_name, downloads, created FROM gallery
+            "SELECT id, name, texture, model, category, author_name, downloads, created FROM gallery
              WHERE hidden = 0 AND status = 'approved' AND (name LIKE ?1 OR author_name LIKE ?1)
-             ORDER BY {order} LIMIT ?2 OFFSET ?3"
+               AND (?2 = '' OR category = ?2)
+             ORDER BY {order} LIMIT ?3 OFFSET ?4"
         );
         let mut stmt = conn.prepare(&sql)?;
         let items = stmt
             .query_map(
-                params![pattern, limit.min(MAX_PAGE) as i64, offset as i64],
+                params![pattern, category, limit.min(MAX_PAGE) as i64, offset as i64],
                 |r| {
                     Ok(Item {
                         id: r.get(0)?,
                         name: r.get(1)?,
                         texture: r.get(2)?,
                         model: r.get(3)?,
-                        author: r.get(4)?,
-                        downloads: r.get(5)?,
-                        created: r.get(6)?,
+                        category: r.get(4)?,
+                        author: r.get(5)?,
+                        downloads: r.get(6)?,
+                        created: r.get(7)?,
                     })
                 },
             )?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         let total = conn.query_row(
-            "SELECT COUNT(*) FROM gallery WHERE hidden = 0 AND status = 'approved' AND (name LIKE ?1 OR author_name LIKE ?1)",
-            [&pattern],
+            "SELECT COUNT(*) FROM gallery WHERE hidden = 0 AND status = 'approved' AND (name LIKE ?1 OR author_name LIKE ?1)
+               AND (?2 = '' OR category = ?2)",
+            params![pattern, category],
             |r| r.get(0),
         )?;
         Ok(Page { items, total })
+    }
+
+    pub(crate) fn migrate_gallery_category(&self) -> rusqlite::Result<()> {
+        let conn = self.conn();
+        let has_column = {
+            let mut stmt = conn.prepare("SELECT name FROM pragma_table_info('gallery')")?;
+            stmt.query_map([], |r| r.get::<_, String>(0))?
+                .collect::<rusqlite::Result<Vec<_>>>()?
+                .iter()
+                .any(|name| name == "category")
+        };
+        if !has_column {
+            conn.execute_batch(
+                "ALTER TABLE gallery ADD COLUMN category TEXT NOT NULL DEFAULT 'community'",
+            )?;
+        }
+        conn.execute_batch(
+            "CREATE INDEX IF NOT EXISTS gallery_category ON gallery (category, status, created)",
+        )
     }
 
     /// Items wait for a moderator's approval. Older databases get the
@@ -278,6 +327,8 @@ impl Store {
     }
 
     /// The latest moderation decisions, newest first.
+    /// The log, newest first (the admin API reads it with its own query; tests read it here).
+    #[cfg(test)]
     pub fn moderation_log(&self, limit: usize) -> rusqlite::Result<Vec<LogEntry>> {
         let conn = self.conn();
         let mut stmt = conn.prepare(

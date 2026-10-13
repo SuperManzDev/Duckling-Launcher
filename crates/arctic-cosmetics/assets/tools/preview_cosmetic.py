@@ -2,9 +2,9 @@
 pushing: python tools/preview_cosmetic.py <folder> <id> [out.png]
 
 It draws the same geometry the game draws (bones, cube rotation, per-face
-texture rectangles, glow layer) from the back, a three-quarter view and the
-side, next to a grey player. It is a quick check, not the game: lighting and
-particles are not shown.
+texture rectangles, glow layer) from the back, a three-quarter view, both
+sides and the front, next to a grey player. It is a quick check, not the game:
+lighting and particles are not shown.
 """
 import json
 import math
@@ -150,18 +150,19 @@ def player_quads():
     return quads
 
 
-def render(folder, id, out):
+def render(folder, id, out, scale=9):
     geo = json.load(open(os.path.join(folder, f"{id}.geo.json")))["minecraft:geometry"][0]
     tex = np.array(Image.open(os.path.join(folder, f"{id}.png")).convert("RGBA"))
     gpath = os.path.join(folder, f"{id}.glow.png")
     glow = np.array(Image.open(gpath).convert("RGBA")) if os.path.exists(gpath) else None
     quads = bone_quads(geo)
     grey_tex = np.full((1, 1, 4), 255, dtype=np.uint8)
-    scale = 9
-    # Camera azimuth around the player: 0 = behind (the wings' side), 90 = the player's left, 180 = in front.
-    views = [("back", math.radians(0)), ("three-quarter", math.radians(40)), ("side", math.radians(90))]
+    # Camera azimuth around the player: 0 = behind, 180 = in front.
+    views = [("back", 0), ("three-quarter", 40), ("left side", 90),
+             ("front", 180), ("right side", 270)]
     panels = []
-    for label, yaw in views:
+    for label, degrees in views:
+        yaw = math.radians(degrees)
         c, s = math.cos(yaw), math.sin(yaw)
 
         def view(p):  # Java space (y down, front = -z) -> screen (x right, y down, z toward the camera)

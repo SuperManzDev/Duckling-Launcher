@@ -501,8 +501,62 @@ mod tests {
     fn the_bundled_cosmetics_and_emotes_load() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
         let content = Content::load(&dir).unwrap();
-        assert!(content.cosmetics.len() >= 17, "{}", content.cosmetics.len());
-        assert!(content.emotes.len() >= 6, "{}", content.emotes.len());
+        assert!(
+            content.cosmetics.len() + content.meshes.len() >= 70,
+            "cosmetic catalog shrank"
+        );
+        assert!(content.emotes.len() >= 29, "emote catalog shrank");
+        let frost = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "frost_wings")
+            .expect("Frost Wings retains its cuboid fallback");
+        assert!(frost.mesh.is_some(), "Frost Wings needs its sculpted model");
+        let dragon = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "dragon_wings")
+            .expect("Dragon Wings retains its cuboid fallback");
+        assert!(
+            dragon.mesh.is_some(),
+            "Dragon Wings needs its sculpted model"
+        );
+        let sail = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "star_sail")
+            .expect("Star Sail retains its cuboid fallback");
+        assert!(sail.mesh.is_some(), "Star Sail needs its sculpted model");
+        let clockwork = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "clockwork_wings")
+            .expect("Clockwork Wings retains its cuboid fallback");
+        assert!(
+            clockwork.mesh.is_some(),
+            "Clockwork Wings needs its sculpted model"
+        );
+        let penguin = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "pocket_penguin")
+            .expect("Pocket Penguin retains its cuboid fallback");
+        assert!(
+            penguin.mesh.is_some(),
+            "Pocket Penguin needs its sculpted model"
+        );
+        let owl = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "snow_owl")
+            .expect("Snow Owl retains its cuboid fallback");
+        assert!(owl.mesh.is_some(), "Snow Owl needs its sculpted model");
+        let fox = content
+            .cosmetics
+            .iter()
+            .find(|item| item.id == "tiny_fox")
+            .expect("Tiny Fox retains its cuboid fallback");
+        assert!(fox.mesh.is_some(), "Tiny Fox needs its sculpted model");
     }
 
     #[test]

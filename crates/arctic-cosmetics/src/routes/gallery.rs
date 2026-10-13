@@ -26,19 +26,27 @@ struct ListQuery {
     #[serde(default)]
     q: String,
     #[serde(default)]
+    category: String,
+    #[serde(default)]
     offset: usize,
     #[serde(default)]
     limit: Option<usize>,
 }
 
 async fn list(State(state): State<Shared>, Query(q): Query<ListQuery>) -> Response {
+    if !gallery::known_collection(&q.category) {
+        return error(StatusCode::BAD_REQUEST, "unknown skin collection");
+    }
     let sort = if q.sort == "new" {
         Sort::New
     } else {
         Sort::Popular
     };
     let limit = q.limit.unwrap_or(24).clamp(1, gallery::MAX_PAGE);
-    match state.store.gallery_page(sort, &q.q, q.offset, limit) {
+    match state
+        .store
+        .gallery_page_filtered(sort, &q.q, &q.category, q.offset, limit)
+    {
         Ok(page) => Json(page).into_response(),
         Err(e) => db_error("gallery list", e),
     }

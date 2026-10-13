@@ -69,5 +69,10 @@
   {"id": "opaline_antlers", "name": "Opaline Antlers", "slot": "head"},
   {"id": "copper_scarab", "name": "Copper Scarab", "slot": "shoulders"},
   {"id": "tidal_koi", "name": "Tidal Koi", "slot": "shoulders"},
-  {"id": "celestial_mantle", "name": "Celestial Mantle", "slot": "body"}
+  {"id": "celestial_mantle", "name": "Celestial Mantle", "slot": "body"},
+  {"id": "brass_quiver", "name": "Brass Quiver", "slot": "back"},
+  {"id": "honeybee_buddy", "name": "Honeybee Buddy", "slot": "shoulders"},
+  {"id": "fox_festival_mask", "name": "Fox Festival Mask", "slot": "face"},
+  {"id": "prism_bracers", "name": "Prism Bracers", "slot": "arms"},
+  {"id": "alchemist_bandolier", "name": "Alchemist Bandolier", "slot": "body"}
 ]

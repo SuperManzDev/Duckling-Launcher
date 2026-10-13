@@ -8,16 +8,12 @@ the right arm lifts out and up with +z, a part pitches down/forward with +x), wh
 lift/shift (pixels) and turn (yaw degrees), and for some hands a target point (Blockbench
 pixels: y up from the ground, the player's right is -x, the front is -z) instead of an angle.
 
-They become emotes for the client's expressive rig (mod/core/.../looks/Rig.java): bones root
-(drawn only: [0, turn, 0] and [shift, lift, 0]), torso (bends at the waist and carries the head
-and arms), head, rightArm, leftArm, rightLeg, leftLeg. Every channel is sampled at 30 fps with
-an ease-in-out between the study's keys (holds stay still, impacts stay sharp, nothing
-overshoots), then keys a straight line already reproduces are dropped. Hand targets are turned
-into arm angles here (the arm stays one straight part); seated emotes get their height from the
-lowest foot corner.
-
-Studies that need joints the rig doesn't have yet (elbows, knees, a separate pelvis) are skipped
-and listed.
+They become emotes for the client's expressive rig (mod/core/.../looks/Rig.java): root
+(drawn only: [0, turn, 0] and [shift, lift, 0]), torso or split chest/pelvis, head, and
+upper/lower arm and leg bones where the study calls for them. Every channel is sampled at
+30 fps with an ease-in-out between the study's keys (holds stay still and impacts stay sharp),
+then keys a straight line already reproduces are dropped. Hand and foot targets are solved
+against the authored bend hints; seated emotes get their height from the lowest foot corner.
 """
 import glob
 import json

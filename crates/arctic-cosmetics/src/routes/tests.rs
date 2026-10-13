@@ -767,6 +767,13 @@ async fn gallery_share_browse_use_report() {
 
     let (_, page) = call(&app, "GET", "/v1/gallery?sort=new&q=knight", None, None).await;
     assert_eq!(page["total"], 1);
+    let (_, page) = call(&app, "GET", "/v1/gallery?category=community", None, None).await;
+    assert_eq!(page["total"], 1);
+    assert_eq!(page["items"][0]["category"], "community");
+    let (_, page) = call(&app, "GET", "/v1/gallery?category=animals", None, None).await;
+    assert_eq!(page["total"], 0);
+    let (status, _) = call(&app, "GET", "/v1/gallery?category=unknown", None, None).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
     let (s, used) = call(&app, "POST", &format!("/v1/gallery/{id}/use"), None, None).await;
     assert_eq!(s, StatusCode::OK);
     let (s, _) = call(
