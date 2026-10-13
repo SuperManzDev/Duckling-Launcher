@@ -240,6 +240,10 @@ async fn dashboard_is_served_only_with_moderators_configured() {
     assert_eq!(s, StatusCode::OK);
     assert_eq!(me["name"], "admin");
     assert_eq!(me["role"], "moderator");
+    // What waits on each tab, for the dashboard's badges.
+    for tab in ["gallery", "servers", "crashes", "suggestions"] {
+        assert_eq!(me["counts"][tab], 0, "{tab}");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1055,7 +1059,7 @@ fn fake_minecraft(motd: std::sync::Arc<std::sync::Mutex<String>>) -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
-        for stream in listener.incoming().take(2) {
+        for stream in listener.incoming().take(16) {
             let mut s = stream.unwrap();
             let handshake = packet(&mut s);
             if *handshake.last().unwrap() == 1 {
@@ -1145,6 +1149,11 @@ async fn servers_submit_verify_and_review() {
     assert_eq!(entry["id"], id.as_str());
     assert_eq!(entry["cracked"], false);
     assert_eq!(entry["players"], 2);
+    // Asked live when the page loads: it answered, so there is no problem to show.
+    assert_eq!(entry["online"], true);
+    assert!(entry["problem"].is_null());
+    let (_, me) = admin("GET", "/v1/admin/me".into(), None).await;
+    assert_eq!(me["counts"]["servers"], 1);
     let (s, _) = admin(
         "POST",
         format!("/v1/admin/servers/{id}"),

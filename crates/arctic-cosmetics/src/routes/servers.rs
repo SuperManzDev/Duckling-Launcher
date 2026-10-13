@@ -184,15 +184,37 @@ async fn review(
         "rejected" => ListingState::Rejected,
         _ => ListingState::Pending,
     };
-    match state.store.listing_in_state(wanted) {
-        Ok(list) => Json(json!({ "servers": list.iter().map(admin_view).collect::<Vec<_>>() }))
-            .into_response(),
-        Err(e) => db_error("server review", e),
-    }
+    let list = match state.store.listing_in_state(wanted) {
+        Ok(list) => list,
+        Err(e) => return db_error("server review", e),
+    };
+    // Asked now, not at the last round of the pinger: what the page shows is how it is.
+    let problems = ping_and_store(&state, &list).await;
+    let list = match state.store.listing_in_state(wanted) {
+        Ok(list) => list,
+        Err(e) => return db_error("server review", e),
+    };
+    let views = list
+        .iter()
+        .map(|l| {
+            let problem = list_problem(&problems, &l.id);
+            admin_view(l, problem)
+        })
+        .collect::<Vec<_>>();
+    Json(json!({ "servers": views })).into_response()
 }
 
-fn admin_view(l: &Listing) -> serde_json::Value {
+/// Why a server didn't answer this time, if it didn't.
+fn list_problem<'a>(problems: &'a [(String, Option<String>)], id: &str) -> Option<&'a str> {
+    problems
+        .iter()
+        .find(|(i, _)| i == id)
+        .and_then(|(_, p)| p.as_deref())
+}
+
+fn admin_view(l: &Listing, problem: Option<&str>) -> serde_json::Value {
     let mut v = serde_json::to_value(l).unwrap_or_default();
+    v["problem"] = json!(problem);
     v["state"] = json!(l.state.as_str());
     v["owner"] = json!(l.owner);
     v["code"] = json!(l.code);
@@ -238,6 +260,15 @@ async fn decide(
             let _ = state
                 .store
                 .moderation_note(&name, &d.action, &id, "server", now());
+            if d.action == "approve"
+                && let Ok(Some(l)) = state.store.listing_get(&id)
+            {
+                // Public as soon as it answers, not at the pinger's next round.
+                let state = state.clone();
+                tokio::spawn(async move {
+                    ping_and_store(&state, &[l]).await;
+                });
+            }
             Json(json!({ "ok": true })).into_response()
         }
         Ok(false) => error(StatusCode::NOT_FOUND, "no such server"),
@@ -250,47 +281,55 @@ pub async fn pinger(state: Shared, every: std::time::Duration) {
     let mut tick = tokio::time::interval(every);
     loop {
         tick.tick().await;
-        let list = match state.store.listing_to_ping() {
-            Ok(l) => l,
-            Err(e) => {
-                log::error!("server pinger: {e}");
-                continue;
+        match state.store.listing_to_ping() {
+            Ok(list) => {
+                ping_and_store(&state, &list).await;
             }
-        };
-        let addresses: Vec<String> = list.iter().map(|l| l.address.clone()).collect();
-        let Ok(results) =
-            tokio::task::spawn_blocking(move || arctic_ping::ping_all(&addresses, None)).await
-        else {
-            continue;
-        };
-        let now = now();
-        for (l, result) in list.iter().zip(results) {
-            let live = result.as_ref().ok().map(|s| Live {
-                players: s.online,
-                max_players: s.max,
-                version: s.version.clone(),
-            });
-            if let Err(e) = state.store.listing_pinged(&l.id, live.as_ref(), now) {
-                log::error!("server pinger: {e}");
-            }
-            if l.cracked.is_none()
-                && let Ok(s) = result
-            {
-                let (id, address, st) = (l.id.clone(), l.address.clone(), state.clone());
-                let protocol = s.protocol;
-                tokio::task::spawn_blocking(move || {
-                    let found = arctic_ping::Address::parse(&address)
-                        .and_then(|a| arctic_ping::login_check(&a, protocol).ok());
-                    let cracked = match found {
-                        Some(arctic_ping::Login::Premium) => Some(false),
-                        Some(arctic_ping::Login::Cracked) => Some(true),
-                        _ => None,
-                    };
-                    if let Some(c) = cracked {
-                        let _ = st.store.listing_set_cracked(&id, c);
-                    }
-                });
-            }
+            Err(e) => log::error!("server pinger: {e}"),
         }
     }
+}
+
+/// Ping `list` now and keep what each says (players, version; premium or
+/// cracked the first time). Returns each server's id with why it didn't
+/// answer, if it didn't.
+async fn ping_and_store(state: &Shared, list: &[Listing]) -> Vec<(String, Option<String>)> {
+    let addresses: Vec<String> = list.iter().map(|l| l.address.clone()).collect();
+    let Ok(results) =
+        tokio::task::spawn_blocking(move || arctic_ping::ping_all(&addresses, None)).await
+    else {
+        return Vec::new();
+    };
+    let now = now();
+    let mut problems = Vec::with_capacity(list.len());
+    for (l, result) in list.iter().zip(results) {
+        problems.push((l.id.clone(), result.as_ref().err().map(|e| e.to_string())));
+        let live = result.as_ref().ok().map(|s| Live {
+            players: s.online,
+            max_players: s.max,
+            version: s.version.clone(),
+        });
+        if let Err(e) = state.store.listing_pinged(&l.id, live.as_ref(), now) {
+            log::error!("server pinger: {e}");
+        }
+        if l.cracked.is_none()
+            && let Ok(s) = result
+        {
+            let (id, address, st) = (l.id.clone(), l.address.clone(), state.clone());
+            let protocol = s.protocol;
+            tokio::task::spawn_blocking(move || {
+                let found = arctic_ping::Address::parse(&address)
+                    .and_then(|a| arctic_ping::login_check(&a, protocol).ok());
+                let cracked = match found {
+                    Some(arctic_ping::Login::Premium) => Some(false),
+                    Some(arctic_ping::Login::Cracked) => Some(true),
+                    _ => None,
+                };
+                if let Some(c) = cracked {
+                    let _ = st.store.listing_set_cracked(&id, c);
+                }
+            });
+        }
+    }
+    problems
 }

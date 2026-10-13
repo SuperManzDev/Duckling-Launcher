@@ -10,9 +10,9 @@
 //!   Add or remove a person by editing the list. `ARCTIC_COSMETICS_ADMIN_KEY`
 //!   (one key, the moderator "admin") still works.
 //! - `ARCTIC_COSMETICS_READ_KEYS` (optional): read-only keys, `name:key,...`
-//!   (16+ chars, names not shared with moderators). They read crash reports
-//!   and suggestions (`/v1/admin/crashes`, `/v1/admin/suggestions`) and nothing
-//!   else; every change is refused. Their reads show in History by name.
+//!   (16+ chars, names not shared with moderators). They read everything the
+//!   dashboard shows (gallery, servers, suggestions, crashes, history) and
+//!   change nothing. Their reads show in History by name.
 //! - `ARCTIC_COSMETICS_TRUST_PROXY=1`: rate-limit by `X-Forwarded-For` (only
 //!   behind a reverse proxy that sets it).
 

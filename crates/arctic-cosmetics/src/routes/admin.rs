@@ -104,12 +104,45 @@ async fn me(State(state): State<Shared>, headers: HeaderMap) -> Response {
         Role::Moderator => "moderator",
         Role::Reader => "reader",
     };
-    match state.store.gallery_pending_count() {
-        Ok(pending) => {
-            Json(json!({ "name": name, "role": role, "pending": pending })).into_response()
-        }
+    match waiting(&state) {
+        Ok((pending, counts)) => Json(json!({
+            "name": name,
+            "role": role,
+            "pending": pending,
+            "counts": counts,
+        }))
+        .into_response(),
         Err(e) => db_error("pending count", e),
     }
+}
+
+/// What waits on each dashboard tab: gallery items and servers to review,
+/// open crash groups and open suggestions (each counted up to `MAX_LIST`).
+fn waiting(state: &Shared) -> rusqlite::Result<(i64, serde_json::Value)> {
+    let gallery = state.store.gallery_pending_count()?;
+    let servers = state
+        .store
+        .listing_in_state(crate::listing::State::Pending)?
+        .len();
+    let open_crashes = Filter {
+        status: Some("open".to_owned()),
+        ..Filter::default()
+    };
+    let crashes = state.store.crash_groups(&open_crashes, MAX_LIST)?.len();
+    let open_suggestions = SuggestionFilter {
+        done: Some(false),
+        ..SuggestionFilter::default()
+    };
+    let suggestions = state.store.suggestions(&open_suggestions, MAX_LIST)?.len();
+    Ok((
+        gallery,
+        json!({
+            "gallery": gallery,
+            "servers": servers,
+            "crashes": crashes,
+            "suggestions": suggestions,
+        }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -412,7 +445,6 @@ impl SuggestionQuery {
     }
 }
 
-/// Read-only keys don't see how to reach the person who wrote it.
 async fn suggestion_list(
     State(state): State<Shared>,
     headers: HeaderMap,

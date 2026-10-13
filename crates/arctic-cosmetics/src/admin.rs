@@ -49,8 +49,8 @@ impl Moderators {
         keys
     }
 
-    /// Adds `ARCTIC_COSMETICS_READ_KEYS` (`name:key,name:key`): keys that only
-    /// read crash reports and suggestions. Names are shared with moderators,
+    /// Adds `ARCTIC_COSMETICS_READ_KEYS` (`name:key,name:key`): keys that read
+    /// everything the dashboard shows and change nothing. Names are shared with moderators,
     /// so one name never means two keys.
     pub fn with_readers(mut self, list: Option<&str>) -> Self {
         self.add_list(list, Role::Reader);
