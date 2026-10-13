@@ -68,6 +68,7 @@
   {"id": "prism_orbit", "name": "Prism Orbit", "slot": "head"},
   {"id": "opaline_antlers", "name": "Opaline Antlers", "slot": "head"},
   {"id": "shadow_brim", "name": "Shadow Brim", "slot": "head"},
+  {"id": "void_brim", "name": "Void Brim", "slot": "head"},
   {"id": "copper_scarab", "name": "Copper Scarab", "slot": "shoulders"},
   {"id": "tidal_koi", "name": "Tidal Koi", "slot": "shoulders"},
   {"id": "celestial_mantle", "name": "Celestial Mantle", "slot": "body"},
