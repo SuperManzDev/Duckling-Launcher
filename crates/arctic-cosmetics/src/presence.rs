@@ -114,8 +114,14 @@ impl Store {
             let owned = own.query_row([uuid], look).optional()?;
             let arctic = current.is_some();
             // The account's own look first; on offline servers, the look of
-            // whoever is on Arctic as this UUID right now.
-            let Some((skin, model, cape, cosmetics, fit)) = owned.or(current) else {
+            // whoever is on Arctic as this UUID right now. An account row with nothing
+            // on it (someone who once signed in under this name) doesn't hide that look.
+            let has_look = |row: &LookRow| row.0.is_some() || row.2.is_some() || !row.3.is_empty();
+            let chosen = match owned {
+                Some(row) if has_look(&row) => Some(row),
+                other => current.or(other),
+            };
+            let Some((skin, model, cape, cosmetics, fit)) = chosen else {
                 continue;
             };
             if arctic || skin.is_some() || cape.is_some() || !cosmetics.is_empty() {
@@ -240,6 +246,23 @@ mod tests {
             "her cape shows there too"
         );
         assert_eq!(found[0].1.cosmetics, ["halo"]);
+    }
+
+    #[test]
+    fn an_empty_account_row_under_the_same_offline_uuid_does_not_hide_the_look_played_as_it() {
+        let s = store();
+        let offline = crate::images::offline_uuid("Alice");
+        // Someone signed in once as an offline account called Alice and never chose a look.
+        s.touch(&offline, "Alice", 1).unwrap();
+        s.check_in(ALICE, Some(&offline), 1000).unwrap();
+        let found = s.entries(std::slice::from_ref(&offline), 1010).unwrap();
+        assert_eq!(found.len(), 1);
+        assert!(found[0].1.arctic);
+        assert_eq!(
+            found[0].1.cosmetics,
+            ["halo"],
+            "the look of whoever plays as it"
+        );
     }
 
     #[test]
