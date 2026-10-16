@@ -75,6 +75,7 @@ pub struct Onboarding {
     first: FirstPlay,
     /// Other launchers and clients found on this PC.
     others: Vec<&'static str>,
+    pub offline_name: String,
 }
 
 impl DucklingApp {
@@ -115,6 +116,7 @@ impl DucklingApp {
                 FirstPlay::Move
             },
             others,
+            offline_name: String::new(),
         });
     }
 
@@ -169,11 +171,24 @@ impl DucklingApp {
                             Step::Welcome => ("Get started", Icon::Play),
                             Step::Start => ("Start playing", Icon::Check),
                             Step::Account if self.accounts.active().is_none() => {
-                                ("Skip for now", Icon::Play)
+                                ("Set profile & Next", Icon::Play)
                             }
                             _ => ("Next", Icon::Play),
                         };
                         if widgets::button(ui, p, Some(icon), label, true).clicked() {
+                            #[cfg(feature = "offline-accounts")]
+                            if step == Step::Account && self.accounts.active().is_none() {
+                                let name = self
+                                    .onboarding
+                                    .as_ref()
+                                    .map(|o| o.offline_name.trim().to_owned())
+                                    .filter(|n| !n.is_empty())
+                                    .unwrap_or_else(|| "DucklingPlayer".to_owned());
+                                if let Ok(account) = duckling_core::auth::offline::create(&name) {
+                                    self.accounts.upsert(account);
+                                    self.save_accounts();
+                                }
+                            }
                             if step == Step::Start {
                                 finish = true;
                             } else {
@@ -283,8 +298,8 @@ impl DucklingApp {
         heading(
             ui,
             p,
-            "Add your account",
-            "Sign in with the Microsoft account that owns Minecraft.",
+            "Create your player profile",
+            "Choose a username for your offline profile, or sign in.",
         );
         ui.add_space(12.0);
         if let Some(account) = self.accounts.active() {
@@ -298,37 +313,84 @@ impl DucklingApp {
                 );
                 ui.add_space(26.0);
                 ui.label(
-                    RichText::new(format!("Signed in as {name}"))
+                    RichText::new(format!("Active profile: {name}"))
                         .size(16.0)
                         .color(p.text),
                 );
             });
             ui.add_space(8.0);
-            if ui.link("Add another account").clicked() {
+            if ui.link("Switch or add another account").clicked() {
                 self.add_account = AddAccount::Choose;
             }
             return;
         }
-        let note = if self.msa_configured {
-            "Opens your browser, or gives you a code to enter on any device."
-        } else {
-            "Microsoft sign-in isn't available in this build."
-        };
-        if option_tile(
-            ui,
-            p,
-            Icon::User,
-            "Add account",
-            note,
-            self.msa_configured || cfg!(feature = "offline-accounts"),
-            false,
-        ) {
+
+        #[cfg(feature = "offline-accounts")]
+        {
+            ui.label(RichText::new("Choose an offline player name:").color(p.text));
+            ui.add_space(4.0);
+            let mut submit;
+            let mut name_to_create = None;
+            if let Some(o) = &mut self.onboarding {
+                let name_buf = &mut o.offline_name;
+                let resp = ui.add(
+                    widgets::text_field(name_buf)
+                        .hint_text("DucklingPlayer")
+                        .char_limit(16)
+                        .desired_width(f32::INFINITY),
+                );
+                let valid =
+                    duckling_core::auth::offline::validate_username(name_buf.trim()).is_ok();
+                let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
+                submit = valid && (resp.lost_focus() && enter);
+
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    let valid_label = if name_buf.is_empty() || valid {
+                        "1–16 letters, digits or _"
+                    } else {
+                        "Only letters, digits and _ (max 16)"
+                    };
+                    ui.label(RichText::new(valid_label).small().color(
+                        if valid || name_buf.is_empty() {
+                            p.muted
+                        } else {
+                            p.warn
+                        },
+                    ));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let btn = ui
+                            .add_enabled_ui(valid, |ui| {
+                                widgets::button(ui, p, Some(Icon::Plus), "Set Profile", true)
+                            })
+                            .inner;
+                        if btn.clicked() {
+                            submit = true;
+                        }
+                    });
+                });
+
+                if submit {
+                    name_to_create = Some(name_buf.trim().to_owned());
+                }
+            }
+
+            if let Some(name) = name_to_create
+                && let Ok(account) = duckling_core::auth::offline::create(&name)
+            {
+                self.accounts.upsert(account);
+                self.save_accounts();
+            }
+            ui.add_space(10.0);
+        }
+
+        if ui.link("Or sign in with a Microsoft account…").clicked() {
             self.add_account = AddAccount::Choose;
         }
         ui.add_space(8.0);
         ui.label(
             RichText::new(
-                "Your sign-in stays on this PC, encrypted. Duckling never sees your password.",
+                "Your player profile stays on this PC. No Microsoft account or internet required.",
             )
             .small()
             .color(p.muted),
@@ -497,6 +559,26 @@ impl DucklingApp {
     }
 
     fn finish_onboarding(&mut self, now: f64) {
+        #[cfg(feature = "offline-accounts")]
+        if self.accounts.active().is_none() {
+            let default_name = std::env::var("USERNAME")
+                .or_else(|_| std::env::var("USER"))
+                .unwrap_or_else(|_| "Duckling".to_owned());
+            let name = self
+                .onboarding
+                .as_ref()
+                .map(|o| o.offline_name.trim().to_owned())
+                .filter(|n| !n.is_empty())
+                .unwrap_or(default_name);
+            let valid_name = match duckling_core::auth::offline::validate_username(&name) {
+                Ok(_) => name,
+                Err(_) => "DucklingPlayer".to_owned(),
+            };
+            if let Ok(account) = duckling_core::auth::offline::create(&valid_name) {
+                self.accounts.upsert(account);
+                self.save_accounts();
+            }
+        }
         let first = self.onboarding.take().map_or(FirstPlay::Later, |o| o.first);
         self.settings.onboarded = true;
         self.persist_settings();

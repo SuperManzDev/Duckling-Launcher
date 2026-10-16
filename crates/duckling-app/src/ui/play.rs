@@ -1,4 +1,4 @@
-﻿//! Play tab: instance card, version picker, Play button and launch status.
+//! Play tab: instance card, version picker, Play button and launch status.
 
 use eframe::egui::{
     self, Align2, CornerRadius, CursorIcon, FontId, Popup, PopupCloseBehavior, RichText, Sense,
@@ -235,8 +235,17 @@ impl DucklingApp {
     fn account_chip(&mut self, ui: &mut egui::Ui) {
         let p = self.palette();
         let Some(account) = self.accounts.active().cloned() else {
-            if widgets::button(ui, p, Some(Icon::Plus), "Add account", true).clicked() {
-                self.add_account = AddAccount::Choose;
+            if widgets::button(ui, p, Some(Icon::Plus), "Create offline profile", true).clicked() {
+                #[cfg(feature = "offline-accounts")]
+                {
+                    self.add_account = AddAccount::Offline {
+                        name: String::new(),
+                    };
+                }
+                #[cfg(not(feature = "offline-accounts"))]
+                {
+                    self.add_account = AddAccount::Choose;
+                }
             }
             return;
         };
@@ -504,6 +513,19 @@ impl DucklingApp {
         let response = widgets::play_button(ui, p, state, PLAY_SIZE.into());
         let now = ui.input(|i| i.time);
         if response.clicked() {
+            if self.accounts.active().is_none() {
+                #[cfg(feature = "offline-accounts")]
+                {
+                    self.add_account = AddAccount::Offline {
+                        name: String::new(),
+                    };
+                }
+                #[cfg(not(feature = "offline-accounts"))]
+                {
+                    self.add_account = AddAccount::Choose;
+                }
+                return;
+            }
             self.play_burst = Some((now, response.rect.center()));
             self.launch_selected();
         }
@@ -565,7 +587,7 @@ impl DucklingApp {
         if self.update_required() {
             Some("A required launcher update must be installed first.")
         } else if self.accounts.active().is_none() {
-            Some("Add an account to play.")
+            Some("Create an offline profile to play.")
         } else if !matches!(self.manifest, ManifestState::Ready(_)) {
             Some("Loading versions…")
         } else {

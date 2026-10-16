@@ -1,4 +1,4 @@
-﻿//! Modal dialogs: add account (Microsoft browser / code, offline) and
+//! Modal dialogs: add account (Microsoft browser / code, offline) and
 //! remove-account confirmation.
 
 #[cfg(feature = "offline-accounts")]
@@ -71,32 +71,31 @@ impl DucklingApp {
             Some("Microsoft sign-in isn't available in this build")
         };
         #[cfg_attr(not(feature = "offline-accounts"), allow(unused_mut))]
-        let mut options = vec![
-            (
-                Choice::Browser,
-                Icon::External,
-                "Microsoft",
-                "Sign in with your browser. Recommended.",
-                ms_note,
-            ),
-            (
-                Choice::Code,
-                Icon::Copy,
-                "Microsoft with a code",
-                "Enter a short code on any device.",
-                ms_note,
-            ),
-        ];
+        let mut options = Vec::new();
         #[cfg(feature = "offline-accounts")]
         {
             options.push((
                 Choice::Offline,
                 Icon::User,
-                "Offline",
-                "Singleplayer and offline-mode servers.",
+                "Offline Profile",
+                "Play offline without a Microsoft account or internet.",
                 None,
             ));
         }
+        options.push((
+            Choice::Browser,
+            Icon::External,
+            "Microsoft",
+            "Sign in with your browser.",
+            ms_note,
+        ));
+        options.push((
+            Choice::Code,
+            Icon::Copy,
+            "Microsoft with a code",
+            "Enter a short code on any device.",
+            ms_note,
+        ));
         for (choice, icon, title, desc, disabled) in options {
             if option_tile(
                 ui,
