@@ -1,4 +1,4 @@
-//! Embeds the generated snowflake icon and version info into the Windows exe.
+//! Embeds the generated duckling icon and version info into the Windows exe.
 
 use std::path::PathBuf;
 

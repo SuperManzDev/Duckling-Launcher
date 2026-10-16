@@ -1,4 +1,4 @@
-﻿//! Update prompts: the overlay for a required update (it installs and restarts by itself after a
+//! Update prompts: the overlay for a required update (it installs and restarts by itself after a
 //! short countdown), and "What's new" once after an update.
 
 use std::time::Duration;
@@ -114,8 +114,8 @@ impl DucklingApp {
             | UpdateState::Installing { info, .. }
             | UpdateState::Failed {
                 retry: Some(info), ..
-            } => format!("Arctic Launcher {}", info.version),
-            _ => "This Arctic Launcher update".to_owned(),
+            } => format!("Duckling Launcher {}", info.version),
+            _ => "This Duckling Launcher update".to_owned(),
         };
         format!(
             "{version} is a mandatory update: games can't be started with this version until it's installed."
@@ -237,7 +237,7 @@ impl DucklingApp {
             .show(ctx, |ui| {
                 ui.set_width(NOTES_WIDTH);
                 ui.label(
-                    RichText::new(format!("Updated to Arctic Launcher {}", whats_new.version))
+                    RichText::new(format!("Updated to Duckling Launcher {}", whats_new.version))
                         .font(crate::fonts::heading(22.0))
                         .color(p.text),
                 );

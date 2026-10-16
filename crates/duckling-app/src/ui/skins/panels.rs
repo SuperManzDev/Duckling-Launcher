@@ -1,4 +1,4 @@
-﻿//! Layout of the Cosmetics tab: a large live preview with what you're
+//! Layout of the Cosmetics tab: a large live preview with what you're
 //! wearing under it, and on the right a rail of categories (skins, capes,
 //! each cosmetic slot) next to the list for the one picked. Pointing at
 //! something tries it on in the preview; clicking wears it.
@@ -52,7 +52,7 @@ impl DucklingApp {
             ui,
             p,
             "Cosmetics",
-            "Skins, capes and cosmetics every Arctic player sees, on any account.",
+            "Skins, capes and cosmetics every Duckling player sees, on any account.",
         );
         self.account_notice(ui, p);
         // What was pointed at last frame is tried on in the preview now.
@@ -134,9 +134,9 @@ impl DucklingApp {
                 // Connection problems get a plain message; details go to the log.
                 let text = if e.starts_with("network error") {
                     log::info!("looks server: {e}");
-                    "Can't reach the Arctic looks server right now.".to_owned()
+                    "Can't reach the Duckling looks server right now.".to_owned()
                 } else {
-                    format!("Arctic looks are unavailable: {e}")
+                    format!("Duckling looks are unavailable: {e}")
                 };
                 ui.label(RichText::new(text).color(p.muted));
                 if ui.link("Retry").clicked() {
@@ -394,7 +394,7 @@ impl DucklingApp {
         });
         ui.add_space(4.0);
         let skin = if current.arctic_skin {
-            "Arctic skin"
+            "Duckling skin"
         } else if current.skin_key.is_some() {
             "Minecraft skin"
         } else {

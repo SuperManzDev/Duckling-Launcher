@@ -1,4 +1,4 @@
-﻿//! Settings tab. Every change is saved automatically.
+//! Settings tab. Every change is saved automatically.
 
 use std::path::PathBuf;
 
@@ -69,12 +69,12 @@ impl DucklingApp {
             ui.checkbox(&mut s.intro, "Intro animation on start");
             ui.checkbox(&mut s.start_maximized, "Start the launcher maximized");
             if cfg!(windows) {
-                ui.checkbox(&mut s.tray, "Keep Arctic in the system tray when closed")
+                ui.checkbox(&mut s.tray, "Keep Duckling in the system tray when closed")
                     .on_hover_text("Reopens instantly. Quit from the tray icon.");
             }
             ui.checkbox(
                 &mut s.exit_games_with_launcher,
-                "Close Minecraft when Arctic quits",
+                "Close Minecraft when Duckling quits",
             )
             .on_hover_text("Off: games keep running after the launcher closes.");
             ui.checkbox(&mut s.show_sponsor, "Show supporter mentions")
@@ -82,10 +82,10 @@ impl DucklingApp {
                     "\"Supported by Flash Hosting\" in the sidebar, About and Play together.",
                 );
             ui.checkbox(&mut s.quick_tips, "Show quick tips")
-                .on_hover_text("A tip about one of Arctic's features in the sidebar, a new one every 5 minutes.");
+                .on_hover_text("A tip about one of Duckling's features in the sidebar, a new one every 5 minutes.");
         });
 
-        section(ui, p, "Arctic Client", |ui| {
+        section(ui, p, "Duckling Client", |ui| {
             ui.label(
                 RichText::new(
                     "How Minecraft's menus look in game. Press Right Shift in game for HUD widgets and capes.",
@@ -186,7 +186,7 @@ impl DucklingApp {
             );
             widgets::field_row(ui, |ui| {
                 ui.label("Crash reports")
-                    .on_hover_text("When the game crashes, Arctic can send its log so the crash can be fixed. Your name, folders and sign-in details are taken out first.");
+                    .on_hover_text("When the game crashes, Duckling can send its log so the crash can be fixed. Your name, folders and sign-in details are taken out first.");
                 ui.selectable_value(&mut s.crash_reports, CrashReports::Ask, "Ask me");
                 ui.selectable_value(&mut s.crash_reports, CrashReports::Always, "Always send");
                 ui.selectable_value(&mut s.crash_reports, CrashReports::Never, "Never");
@@ -195,7 +195,7 @@ impl DucklingApp {
 
         section(ui, p, "Java", |ui| {
             ui.label(
-                RichText::new("Arctic downloads the right Java for each version automatically.")
+                RichText::new("Duckling downloads the right Java for each version automatically.")
                     .small()
                     .color(p.muted),
             );
@@ -244,7 +244,7 @@ impl DucklingApp {
             ui.checkbox(&mut shared.servers, "Server list");
             ui.checkbox(
                 &mut shared.client,
-                "Arctic Client settings (HUD, crosshair, keys, waypoints)",
+                "Duckling Client settings (HUD, crosshair, keys, waypoints)",
             );
             ui.checkbox(
                 &mut shared.game,
@@ -290,7 +290,7 @@ impl DucklingApp {
                 self.start_onboarding();
             }
             if widgets::button(ui, p, None, "Desktop shortcut", false)
-                .on_hover_text("Puts an Arctic Launcher shortcut on your desktop")
+                .on_hover_text("Puts a Duckling Launcher shortcut on your desktop")
                 .clicked()
             {
                 match crate::desktop_shortcut::create() {

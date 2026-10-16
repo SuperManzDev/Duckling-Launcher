@@ -37,18 +37,18 @@ struct Aurora {
 
 const AURORAS: [Aurora; 3] = [
     Aurora {
-        color: Color32::from_rgb(0x34, 0xd3, 0x99),
+        color: Color32::from_rgb(0xfb, 0xbf, 0x24),
         y: 0.20,
         height: 130.0,
         speed: 1.0,
-        brightness: 0.42,
+        brightness: 0.40,
     },
     Aurora {
-        color: Color32::from_rgb(0x22, 0xd3, 0xee),
+        color: Color32::from_rgb(0xf4, 0x72, 0xb6),
         y: 0.27,
         height: 100.0,
         speed: 0.7,
-        brightness: 0.32,
+        brightness: 0.28,
     },
     Aurora {
         color: Color32::from_rgb(0xa7, 0x8b, 0xfa),

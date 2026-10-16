@@ -1,4 +1,4 @@
-﻿//! Window layout: backdrop, sidebar, update banner, animated tab content,
+//! Window layout: backdrop, sidebar, update banner, animated tab content,
 //! dialogs and toasts.
 
 use eframe::egui::{self, RichText};
@@ -164,7 +164,7 @@ impl DucklingApp {
                     ))
                     .color(p.warn)
                 } else {
-                    RichText::new(format!("Arctic Launcher {} is available.", info.version))
+                    RichText::new(format!("Duckling Launcher {} is available.", info.version))
                         .color(p.accent)
                 };
                 ui.label(text);

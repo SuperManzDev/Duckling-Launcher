@@ -1,15 +1,18 @@
-<h1 align="center">Duckling Launcher</h1>
+<p align="center">
+  <img src="docs/duckling.png" width="96" height="96" alt="Duckling Launcher Logo"><br>
+  <b>Duckling Launcher</b>
+</p>
 
 <p align="center">
-  A fast, lightweight Minecraft launcher written in Rust.<br>
+  A cheerful, lightweight, blazing-fast Minecraft launcher written in Rust.<br>
   Supports all game releases, mod loaders, skins, capes, and peer-to-peer play in a single native binary.
 </p>
 
 <p align="center">
-  <a href="https://github.com/SuperManzDev/Duckling-Launcher/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/SuperManzDev/Duckling-Launcher?style=flat-square&color=38bdf8"></a>
-  <a href="https://github.com/SuperManzDev/Duckling-Launcher/actions/workflows/ci.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/SuperManzDev/Duckling-Launcher/ci.yml?branch=main&style=flat-square"></a>
-  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-7dd3fc?style=flat-square"></a>
-  <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-0ea5e9?style=flat-square">
+  <a href="https://github.com/SuperManzDev/Duckling-Launcher/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/SuperManzDev/Duckling-Launcher?style=flat-square&color=f59e0b"></a>
+  <a href="https://github.com/SuperManzDev/Duckling-Launcher/actions/workflows/build-windows.yml"><img alt="Windows Build" src="https://img.shields.io/github/actions/workflow/status/SuperManzDev/Duckling-Launcher/build-windows.yml?branch=main&style=flat-square&label=windows%20build"></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-fbbf24?style=flat-square"></a>
+  <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-d97706?style=flat-square">
 </p>
 
 <p align="center">

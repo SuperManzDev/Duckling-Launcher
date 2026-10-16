@@ -1,4 +1,4 @@
-﻿//! Arctic's supporter, Flash Hosting: a small row in the sidebar, a card
+//! Arctic's supporter, Flash Hosting: a small row in the sidebar, a card
 //! where a server that stays up is the natural next step (playing together),
 //! and a credit in About. Never in the way; Settings → "Show supporter
 //! mentions" hides all of it.
@@ -106,7 +106,7 @@ impl DucklingApp {
                     ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
                         ui.horizontal(|ui| {
                             ui.label(RichText::new(NAME).size(16.0).strong().color(p.text));
-                            ui.label(RichText::new("Supports Arctic").small().color(flash::AMBER));
+                            ui.label(RichText::new("Supports Duckling").small().color(flash::AMBER));
                         });
                         ui.add(
                             egui::Label::new(

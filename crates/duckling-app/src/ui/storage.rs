@@ -1,4 +1,4 @@
-﻿//! Choosing folders: Settings → Storage (where the launcher keeps everything) and an instance's
+//! Choosing folders: Settings → Storage (where the launcher keeps everything) and an instance's
 //! game folder (its worlds, mods and packs).
 
 use std::path::{Path, PathBuf};
@@ -115,7 +115,7 @@ impl DucklingApp {
             RootSource::ChosenMissing { chosen, .. } => {
                 ui.label(
                     RichText::new(format!(
-                        "{} isn't available (an unplugged drive?). Arctic uses its usual folder until it's back.",
+                        "{} isn't available (an unplugged drive?). Duckling uses its usual folder until it's back.",
                         chosen.display()
                     ))
                     .small()
@@ -136,7 +136,7 @@ impl DucklingApp {
             return;
         }
         ui.add_space(18.0);
-        ui.label(RichText::new("Where Arctic keeps its files").color(p.text));
+        ui.label(RichText::new("Where Duckling keeps its files").color(p.text));
         note(
             ui,
             p,
@@ -206,7 +206,7 @@ impl DucklingApp {
                 match &dialog {
                     Dialog::Check(c) => next = self.check_view(ui, p, c, &from, game_running),
                     Dialog::Moving { to, done, total } => {
-                        title(ui, p, "Moving Arctic's files…");
+                        title(ui, p, "Moving Duckling's files…");
                         ui.label(path_text(p, to));
                         ui.add_space(8.0);
                         let fraction = if *total == 0 {
@@ -219,7 +219,7 @@ impl DucklingApp {
                             format_bytes(*done),
                             format_bytes(*total)
                         )));
-                        note(ui, p, "Arctic restarts when it's done.");
+                        note(ui, p, "Duckling restarts when it's done.");
                     }
                     Dialog::Failed(e) => {
                         title(ui, p, "The files couldn't be moved");
@@ -227,7 +227,7 @@ impl DucklingApp {
                         note(
                             ui,
                             p,
-                            format!("Nothing changed: Arctic still uses {}.", from.display()),
+                            format!("Nothing changed: Duckling still uses {}.", from.display()),
                         );
                         ui.add_space(8.0);
                         if widgets::button(ui, p, None, "OK", true).clicked() {
@@ -262,13 +262,13 @@ impl DucklingApp {
         } else {
             match c.target {
                 Target::Empty => {
-                    title(ui, p, "Move Arctic's files here?");
+                    title(ui, p, "Move Duckling's files here?");
                     ui.label(path_text(p, &c.to));
                     note(
                         ui,
                         p,
                         format!(
-                            "{} move from {}. Arctic restarts when it's done, then removes the old copy.",
+                            "{} move from {}. Duckling restarts when it's done, then removes the old copy.",
                             format_bytes(c.size),
                             from.display()
                         ),
@@ -278,7 +278,7 @@ impl DucklingApp {
                     }
                 }
                 Target::ArcticData => {
-                    title(ui, p, "This folder already has Arctic's files");
+                    title(ui, p, "This folder already has Duckling's files");
                     ui.label(path_text(p, &c.to));
                     note(
                         ui,
@@ -294,7 +294,7 @@ impl DucklingApp {
                     note(
                         ui,
                         p,
-                        "Arctic can keep its files in a folder of its own inside it:",
+                        "Duckling can keep its files in a folder of its own inside it:",
                     );
                     ui.label(path_text(p, &c.to.join(OWN_FOLDER)));
                 }

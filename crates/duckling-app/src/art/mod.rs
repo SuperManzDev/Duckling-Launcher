@@ -92,18 +92,19 @@ pub fn glow(painter: &Painter, center: Pos2, radius: f32, color: Color32, streng
     painter.add(egui::Shape::mesh(mesh));
 }
 
-/// Logo: snowflake + wordmark, for the nav header.
+/// Logo: duckling mark + wordmark, for the nav header.
 pub fn logo(ui: &mut Ui, p: &Palette) {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 56.0), Sense::hover());
     let painter = ui.painter_at(rect);
     let center = rect.left_center() + vec2(22.0, 0.0);
     let t = ui.input(|i| i.time) as f32;
     glow(&painter, center, 26.0, p.accent, 0.8);
-    brand_mark(ui.ctx(), &painter, center, 19.0, t * 0.15);
+    let wobble = (t * 2.5).sin() * 0.08;
+    brand_mark(ui.ctx(), &painter, center, 19.0, wobble);
     painter.text(
         center + vec2(30.0, -9.0),
         Align2::LEFT_CENTER,
-        "Arctic",
+        "Duckling",
         FontId::proportional(26.0),
         p.text,
     );
@@ -121,7 +122,7 @@ const MARK_TEXTURE: u32 = 160;
 /// Tip of the mark's arms, as a fraction of the icon's size.
 const MARK_TIP: f32 = 0.46;
 
-/// The Arctic mark (same art as the window and .exe icon), with its arms
+/// The Duckling mark (same art as the window and .exe icon), with its bounds
 /// reaching `radius` from `center`, turned by `rotation` radians.
 pub fn brand_mark(
     ctx: &egui::Context,
@@ -130,14 +131,14 @@ pub fn brand_mark(
     radius: f32,
     rotation: f32,
 ) {
-    let id = egui::Id::new("arctic-brand-mark");
+    let id = egui::Id::new("duckling-brand-mark");
     let texture = ctx
         .data_mut(|d| d.get_temp::<TextureHandle>(id))
         .unwrap_or_else(|| {
             let rgba = crate::icon_raster::app_icon_rgba(MARK_TEXTURE);
             let size = [MARK_TEXTURE as usize; 2];
             let image = egui::ColorImage::from_rgba_unmultiplied(size, &rgba);
-            let handle = ctx.load_texture("arctic-brand-mark", image, egui::TextureOptions::LINEAR);
+            let handle = ctx.load_texture("duckling-brand-mark", image, egui::TextureOptions::LINEAR);
             ctx.data_mut(|d| d.insert_temp(id, handle.clone()));
             handle
         });

@@ -1,4 +1,4 @@
-﻿//! Settings → "Voice chat": proximity voice with other Arctic players on
+//! Settings → "Voice chat": proximity voice with other Arctic players on
 //! the same server. Off until turned on.
 
 use eframe::egui::{self, RichText};
@@ -16,9 +16,9 @@ impl DucklingApp {
     pub(crate) fn voice_section(&mut self, ui: &mut egui::Ui, p: &Palette) {
         ui.label(
             RichText::new(
-                "Talk with other Arctic players near you on the same server: voices get quieter \
+                "Talk with other Duckling players near you on the same server: voices get quieter \
                  with distance and come from where the player stands. Audio goes directly between \
-                 players; the Arctic server only tells launchers who else is on that server.",
+                 players; the Duckling server only tells launchers who else is on that server.",
             )
             .small()
             .color(p.muted),
@@ -39,7 +39,7 @@ impl DucklingApp {
         });
         if v.push_to_talk {
             ui.label(
-                RichText::new("Hold V in game to talk (change it in the Arctic menu → Voice).")
+                RichText::new("Hold V in game to talk (change it in the Duckling menu → Voice).")
                     .small()
                     .color(p.muted),
             );

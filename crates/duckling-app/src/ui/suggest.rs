@@ -1,4 +1,4 @@
-﻿//! "Suggest a feature or report a bug": a short form that goes to the Arctic team,
+//! "Suggest a feature or report a bug": a short form that goes to the Arctic team,
 //! with an optional launcher / game log attached (cleaned of names and tokens first).
 
 use duckling_core::cosmetics::Suggestion;
@@ -48,7 +48,7 @@ impl DucklingApp {
                 );
                 ui.add_space(4.0);
                 ui.label(
-                    RichText::new("It goes straight to the Arctic team. Nothing is sent until you press Send.")
+                    RichText::new("It goes straight to the Duckling team. Nothing is sent until you press Send.")
                         .color(p.muted),
                 );
                 ui.add_space(10.0);
@@ -65,7 +65,7 @@ impl DucklingApp {
                                 .hint_text(if form.bug {
                                     "What went wrong, and what were you doing?"
                                 } else {
-                                    "What would you like Arctic to do?"
+                                    "What would you like Duckling to do?"
                                 })
                                 .char_limit(MAX_CHARS)
                                 .desired_rows(6)

@@ -1,4 +1,4 @@
-﻿//! The lists of the Cosmetics tab: skins (your library and the gallery),
+//! The lists of the Cosmetics tab: skins (your library and the gallery),
 //! capes and each cosmetic slot, as cards. Pointing at a card tries it on
 //! in the preview ([`Hover`]); clicking wears it (again: takes it off).
 
@@ -64,12 +64,12 @@ impl DucklingApp {
         let (title, about) = if library {
             (
                 "Skins",
-                "Arctic players see the skin you pick here; others see your Minecraft skin.",
+                "Duckling players see the skin you pick here; others see your Minecraft skin.",
             )
         } else {
             (
                 "Skin gallery",
-                "Skins Arctic players have shared, free for anyone. Click one to wear it.",
+                "Skins Duckling players have shared, free for anyone. Click one to wear it.",
             )
         };
         self.list_header(ui, title, about, library);
@@ -161,7 +161,7 @@ impl DucklingApp {
             if self.matches_search("Minecraft skin") {
                 let tile = self.skin_tile(ui, &key, "Minecraft skin", None, !current.arctic_skin);
                 if tile
-                    .on_hover_text("Your own Minecraft skin, for Arctic players too")
+                    .on_hover_text("Your own Minecraft skin, for Duckling players too")
                     .clicked()
                     && current.arctic_skin
                     && can_wear
@@ -327,7 +327,7 @@ impl DucklingApp {
         self.list_header(
             ui,
             "Capes",
-            "Arctic players see an Arctic cape; without one, your Minecraft cape shows.",
+            "Duckling players see a Duckling cape; without one, your Minecraft cape shows.",
             true,
         );
     }
@@ -342,7 +342,7 @@ impl DucklingApp {
     fn arctic_capes(&mut self, ui: &mut egui::Ui) {
         let p = self.palette();
         let Some(state) = self.catalog_state() else {
-            ui.label(RichText::new("Arctic capes are loading.").color(p.muted));
+            ui.label(RichText::new("Duckling capes are loading.").color(p.muted));
             return;
         };
         let all_presets = state.presets.clone();

@@ -1,4 +1,4 @@
-﻿use duckling_core::update::GITHUB_REPO;
+use duckling_core::update::GITHUB_REPO;
 use duckling_core::{APP_NAME, APP_VERSION};
 use eframe::egui::{self, RichText, Sense, vec2};
 
@@ -21,8 +21,9 @@ impl DucklingApp {
             ui.horizontal(|ui| {
                 let (rect, _) = ui.allocate_exact_size(vec2(72.0, 72.0), Sense::hover());
                 let t = ui.input(|i| i.time) as f32;
+                let wobble = (t * 2.5).sin() * 0.08;
                 glow(ui.painter(), rect.center(), 44.0, p.accent, 0.8);
-                brand_mark(ui.ctx(), ui.painter(), rect.center(), 28.0, t * 0.12);
+                brand_mark(ui.ctx(), ui.painter(), rect.center(), 28.0, wobble);
                 ui.vertical(|ui| {
                     ui.add_space(8.0);
                     ui.label(RichText::new(APP_NAME).size(24.0).strong().color(p.text));
@@ -30,10 +31,10 @@ impl DucklingApp {
                 });
             });
             ui.add_space(8.0);
-            ui.label("A lightweight, open-source Minecraft launcher.");
+            ui.label("A lightweight, cheerful duck-themed Minecraft launcher.");
             ui.add_space(8.0);
             crate::widgets::row(ui, |ui| {
-                if widgets::button(ui, p, Some(Icon::External), "arcticlauncher.com", false)
+                if widgets::button(ui, p, Some(Icon::External), "GitHub Project", false)
                     .clicked()
                 {
                     ui.ctx().open_url(egui::OpenUrl::new_tab(WEBSITE));

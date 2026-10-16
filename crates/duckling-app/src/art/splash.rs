@@ -1,4 +1,4 @@
-﻿//! Quick intro (~0.9 s): a snowflake spins in over the night sky, then the
+//! Quick intro (~0.9 s): a snowflake spins in over the night sky, then the
 //! whole overlay dissolves outward to reveal the launcher. Any click or key
 //! skips it.
 
@@ -7,7 +7,7 @@ use std::f32::consts::PI;
 use eframe::egui::emath::easing;
 use eframe::egui::{Align2, Context, FontId, Id, LayerId, Order, vec2};
 
-use super::{glow, snowflake};
+use super::{brand_mark, glow};
 use crate::theme::Palette;
 
 const INTRO: f32 = 0.45;
@@ -50,15 +50,9 @@ impl Splash {
 
         painter.rect_filled(rect, 0.0, p.bg.gamma_multiply(visible));
         let radius = LOGO_RADIUS * intro + 90.0 * outro;
-        let rotation = -(1.0 - intro) * PI / 2.0 + t * 0.4;
-        glow(&painter, center, radius * 2.2, p.accent, 0.9 * visible);
-        snowflake(
-            &painter,
-            center,
-            radius,
-            rotation,
-            p.accent.gamma_multiply(visible),
-        );
+        let wobble = (1.0 - intro) * -0.15 + (t * 2.5).sin() * 0.06;
+        glow(&painter, center, radius * 1.8, p.accent, 0.9 * visible);
+        brand_mark(ctx, &painter, center, radius, wobble);
 
         let title_alpha = ((t - 0.15) / 0.3).clamp(0.0, 1.0) * visible;
         painter.text(
