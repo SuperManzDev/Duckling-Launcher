@@ -198,7 +198,6 @@ fn unstash(game_dir: &Path, game_version: &str, shaders: bool) -> Result<bool> {
             .map_err(|e| crate::Error::io(&file, e))?;
     }
     std::fs::rename(&index, index_path(game_dir)).map_err(|e| crate::Error::io(&index, e))?;
-    let state_file = from.join("arctic-performance-state.json");
     std::fs::rename(&state_file, state_path(game_dir))
         .map_err(|e| crate::Error::io(&state_file, e))?;
     let _ = std::fs::remove_dir_all(&from);

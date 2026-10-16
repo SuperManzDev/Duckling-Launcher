@@ -1,4 +1,4 @@
-﻿//! 3D cosmetics from the Arctic server: the catalog, and each item's
+//! 3D cosmetics from the Arctic server: the catalog, and each item's
 //! Blockbench (Bedrock) geometry, parsed with the same limits the game
 //! uses. The launcher draws them on the skin preview; the game wears them.
 
@@ -319,7 +319,7 @@ mod tests {
     #[test]
     fn the_bundled_cosmetics_parse() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../arctic-cosmetics/assets/cosmetics");
+            .join("../duckling-cosmetics/assets/cosmetics");
         let mut models = 0;
         for entry in std::fs::read_dir(&dir).unwrap() {
             let path = entry.unwrap().path();

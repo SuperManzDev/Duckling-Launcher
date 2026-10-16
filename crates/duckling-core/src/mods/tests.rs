@@ -191,7 +191,7 @@ fn http_errors_are_readable() {
     );
     let limited = modrinth::status_error(429, "search").unwrap().to_string();
     assert!(limited.contains("rate limit"), "{limited}");
-    assert!(modrinth::user_agent().starts_with("brksfrb/arctic-launcher/"));
+    assert!(modrinth::user_agent().starts_with(&format!("brksfrb/{}/", crate::LAUNCHER_BRAND)));
 }
 
 fn tracked(project: &str, file: &str) -> InstalledMod {
