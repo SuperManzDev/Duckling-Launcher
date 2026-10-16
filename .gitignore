@@ -1,5 +1,7 @@
 # Build output
 /target/
+/dist/
+*.exe
 # The Arctic Client's jars (their pack, mod/dist/arctic-client.pack, is committed)
 /mod/dist/*.jar
 **/*.rs.bk
