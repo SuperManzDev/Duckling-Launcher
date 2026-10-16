@@ -26,7 +26,11 @@ pub fn paint(painter: &Painter, rect: Rect, t: f32, mote_color: Color32) {
         if depth > GLOW_DEPTH {
             let radius = 2.0 + 1.5 * hash01(i, 11);
             painter.circle_filled(pos, radius, color);
-            painter.circle_filled(pos, radius * 0.45, Color32::WHITE.gamma_multiply(0.75 * depth));
+            painter.circle_filled(
+                pos,
+                radius * 0.45,
+                Color32::WHITE.gamma_multiply(0.75 * depth),
+            );
         } else {
             painter.circle_filled(pos, 0.6 + depth * 1.5, color);
         }

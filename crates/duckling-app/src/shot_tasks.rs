@@ -1,4 +1,4 @@
-﻿//! Background jobs for the Screenshots tab: listing, thumbnails (cached on
+//! Background jobs for the Screenshots tab: listing, thumbnails (cached on
 //! disk by path and time) and copying an image.
 
 use std::path::{Path, PathBuf};
@@ -10,7 +10,9 @@ const THUMB_W: u32 = 480;
 impl Tasks {
     pub fn screenshot_list(&self) {
         self.run(|t| {
-            t.send(Event::Screenshots(duckling_core::screenshots::list(t.dirs())));
+            t.send(Event::Screenshots(duckling_core::screenshots::list(
+                t.dirs(),
+            )));
         });
     }
 

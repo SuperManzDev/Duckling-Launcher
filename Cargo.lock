@@ -314,153 +314,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "duckling-app"
-version = "0.4.9"
-dependencies = [
- "aes-gcm",
- "arboard",
- "discord-rich-presence",
- "duckling-core",
- "duckling-share",
- "duckling-voice",
- "eframe",
- "egui_extras",
- "image",
- "ksni",
- "libc",
- "log",
- "memmap2",
- "open",
- "raw-window-handle",
- "rfd",
- "serde",
- "serde_json",
- "tempfile",
- "tray-icon",
- "uuid 1.26.1",
- "windows",
- "windows-sys 0.61.2",
- "winresource",
-]
-
-[[package]]
-name = "duckling-cli"
-version = "0.4.9"
-dependencies = [
- "clap",
- "duckling-core",
- "duckling-share",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "duckling-core"
-version = "0.4.9"
-dependencies = [
- "aes-gcm",
- "base64 0.23.1",
- "dirs",
- "duckling-mesh",
- "duckling-ping",
- "env_logger",
- "flate2",
- "getrandom 0.3.4",
- "hex",
- "junction",
- "log",
- "lzma-rs",
- "md-5",
- "open",
- "png",
- "regex",
- "rusqlite",
- "rustls-native-certs",
- "self-replace",
- "semver",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "tempfile",
- "thiserror 2.0.21",
- "ureq",
- "uuid 1.26.1",
- "windows-sys 0.61.2",
- "x11rb",
- "zeroize",
- "zip",
-]
-
-[[package]]
-name = "duckling-cosmetics"
-version = "0.4.9"
-dependencies = [
- "axum",
- "base64 0.23.1",
- "duckling-mesh",
- "duckling-ping",
- "env_logger",
- "hex",
- "hmac",
- "log",
- "md-5",
- "png",
- "rusqlite",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "tempfile",
- "tokio",
- "tower",
- "ureq",
- "uuid 1.26.1",
-]
-
-[[package]]
-name = "duckling-mesh"
-version = "0.4.9"
-dependencies = [
- "png",
- "serde_json",
-]
-
-[[package]]
-name = "duckling-ping"
-version = "0.4.9"
-dependencies = [
- "base64 0.23.1",
- "serde_json",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "duckling-share"
-version = "0.4.9"
-dependencies = [
- "bytes",
- "data-encoding",
- "env_logger",
- "iroh",
- "log",
- "socket2",
- "tokio",
-]
-
-[[package]]
-name = "duckling-voice"
-version = "0.4.9"
-dependencies = [
- "aes-gcm",
- "cpal",
- "getrandom 0.3.4",
- "log",
- "opus",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1648,6 +1501,153 @@ name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
+
+[[package]]
+name = "duckling-app"
+version = "0.4.9"
+dependencies = [
+ "aes-gcm",
+ "arboard",
+ "discord-rich-presence",
+ "duckling-core",
+ "duckling-share",
+ "duckling-voice",
+ "eframe",
+ "egui_extras",
+ "image",
+ "ksni",
+ "libc",
+ "log",
+ "memmap2",
+ "open",
+ "raw-window-handle",
+ "rfd",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tray-icon",
+ "uuid 1.26.1",
+ "windows",
+ "windows-sys 0.61.2",
+ "winresource",
+]
+
+[[package]]
+name = "duckling-cli"
+version = "0.4.9"
+dependencies = [
+ "clap",
+ "duckling-core",
+ "duckling-share",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "duckling-core"
+version = "0.4.9"
+dependencies = [
+ "aes-gcm",
+ "base64 0.23.1",
+ "dirs",
+ "duckling-mesh",
+ "duckling-ping",
+ "env_logger",
+ "flate2",
+ "getrandom 0.3.4",
+ "hex",
+ "junction",
+ "log",
+ "lzma-rs",
+ "md-5",
+ "open",
+ "png",
+ "regex",
+ "rusqlite",
+ "rustls-native-certs",
+ "self-replace",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "ureq",
+ "uuid 1.26.1",
+ "windows-sys 0.61.2",
+ "x11rb",
+ "zeroize",
+ "zip",
+]
+
+[[package]]
+name = "duckling-cosmetics"
+version = "0.4.9"
+dependencies = [
+ "axum",
+ "base64 0.23.1",
+ "duckling-mesh",
+ "duckling-ping",
+ "env_logger",
+ "hex",
+ "hmac",
+ "log",
+ "md-5",
+ "png",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tower",
+ "ureq",
+ "uuid 1.26.1",
+]
+
+[[package]]
+name = "duckling-mesh"
+version = "0.4.9"
+dependencies = [
+ "png",
+ "serde_json",
+]
+
+[[package]]
+name = "duckling-ping"
+version = "0.4.9"
+dependencies = [
+ "base64 0.23.1",
+ "serde_json",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "duckling-share"
+version = "0.4.9"
+dependencies = [
+ "bytes",
+ "data-encoding",
+ "env_logger",
+ "iroh",
+ "log",
+ "socket2",
+ "tokio",
+]
+
+[[package]]
+name = "duckling-voice"
+version = "0.4.9"
+dependencies = [
+ "aes-gcm",
+ "cpal",
+ "getrandom 0.3.4",
+ "log",
+ "opus",
+]
 
 [[package]]
 name = "ecolor"

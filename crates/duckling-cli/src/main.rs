@@ -1,4 +1,4 @@
-﻿//! `arctic`: headless command-line interface to Arctic Launcher.
+//! `arctic`: headless command-line interface to Arctic Launcher.
 //!
 //! Exit codes: 0 success, 1 error, 2 usage error (from clap), and with
 //! `launch --wait` the game's own exit code.
@@ -7,9 +7,9 @@ mod cli;
 mod commands;
 mod output;
 
+use clap::Parser;
 use duckling_core::profiles::ProfileStore;
 use duckling_core::storage::DataDirs;
-use clap::Parser;
 use serde_json::json;
 
 use crate::cli::{Cli, Command};

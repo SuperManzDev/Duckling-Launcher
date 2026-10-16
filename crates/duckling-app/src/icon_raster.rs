@@ -88,12 +88,7 @@ const BEAK_POLY: [(f32, f32); 6] = [
     (0.17, -0.10),
 ];
 
-const TAIL_POLY: [(f32, f32); 4] = [
-    (-0.16, 0.05),
-    (-0.39, -0.06),
-    (-0.34, 0.08),
-    (-0.25, 0.20),
-];
+const TAIL_POLY: [(f32, f32); 4] = [(-0.16, 0.05), (-0.39, -0.06), (-0.34, 0.08), (-0.25, 0.20)];
 
 fn sample_duck(u: f32, v: f32) -> Option<(f32, f32, f32)> {
     let d_head = dist_circle(u, v, 0.07, -0.15, 0.19);
@@ -183,7 +178,11 @@ fn sample_duck(u: f32, v: f32) -> Option<(f32, f32, f32)> {
             b = b * (1.0 - blush_k * 0.28);
         }
 
-        return Some((r.clamp(0.0, 255.0), g.clamp(0.0, 255.0), b.clamp(0.0, 255.0)));
+        return Some((
+            r.clamp(0.0, 255.0),
+            g.clamp(0.0, 255.0),
+            b.clamp(0.0, 255.0),
+        ));
     }
 
     None

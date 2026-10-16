@@ -106,7 +106,11 @@ impl DucklingApp {
                     ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
                         ui.horizontal(|ui| {
                             ui.label(RichText::new(NAME).size(16.0).strong().color(p.text));
-                            ui.label(RichText::new("Supports Duckling").small().color(flash::AMBER));
+                            ui.label(
+                                RichText::new("Supports Duckling")
+                                    .small()
+                                    .color(flash::AMBER),
+                            );
                         });
                         ui.add(
                             egui::Label::new(

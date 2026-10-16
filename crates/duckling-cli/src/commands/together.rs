@@ -1,4 +1,4 @@
-﻿//! `arctic together`: play together without a server, from the terminal.
+//! `arctic together`: play together without a server, from the terminal.
 //! Hosting shares this PC's "Open to LAN" world; joining makes a friend's
 //! world show up in your game's LAN list. Runs until the session ends or
 //! you press Ctrl+C.
@@ -22,8 +22,8 @@ pub fn run(ctx: &Ctx, cmd: &TogetherCommand) -> Result<i32> {
         TogetherCommand::Host { port } => {
             // Same key as the launcher, so the invite code stays the same.
             let key_path = ctx.dirs.profile_root().join("share.key");
-            let key =
-                duckling_share::load_or_create_key(&key_path).map_err(|e| Error::io(&key_path, e))?;
+            let key = duckling_share::load_or_create_key(&key_path)
+                .map_err(|e| Error::io(&key_path, e))?;
             share.host(key, *port);
         }
         TogetherCommand::Join { code } => {

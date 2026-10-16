@@ -1,4 +1,4 @@
-﻿//! "Move to Arctic": pick instances and HUD setups found in other
+//! "Move to Arctic": pick instances and HUD setups found in other
 //! launchers and clients, see what each brings (and its size), import.
 
 use std::collections::{HashMap, HashSet};
@@ -471,7 +471,11 @@ fn hud_row(
     });
 }
 
-fn chosen_bytes(f: &Found, sizes: Option<&duckling_core::migrate::Sizes>, state: &MigrateUi) -> u64 {
+fn chosen_bytes(
+    f: &Found,
+    sizes: Option<&duckling_core::migrate::Sizes>,
+    state: &MigrateUi,
+) -> u64 {
     let (Some(s), Some(chosen)) = (sizes, state.categories.get(&f.key())) else {
         return 0;
     };

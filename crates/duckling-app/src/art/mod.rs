@@ -138,7 +138,8 @@ pub fn brand_mark(
             let rgba = crate::icon_raster::app_icon_rgba(MARK_TEXTURE);
             let size = [MARK_TEXTURE as usize; 2];
             let image = egui::ColorImage::from_rgba_unmultiplied(size, &rgba);
-            let handle = ctx.load_texture("duckling-brand-mark", image, egui::TextureOptions::LINEAR);
+            let handle =
+                ctx.load_texture("duckling-brand-mark", image, egui::TextureOptions::LINEAR);
             ctx.data_mut(|d| d.insert_temp(id, handle.clone()));
             handle
         });

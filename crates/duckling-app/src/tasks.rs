@@ -1,4 +1,4 @@
-﻿//! Background work. Every slow operation runs on its own thread and reports
+//! Background work. Every slow operation runs on its own thread and reports
 //! back through `Event`s, so the UI thread never blocks on the network or
 //! the game process.
 
@@ -256,7 +256,8 @@ impl Tasks {
     /// Callback for the play-together service, feeding the event loop.
     pub fn share_sink(
         &self,
-    ) -> impl Fn(duckling_share::SessionId, duckling_share::ShareEvent) + Send + Sync + 'static {
+    ) -> impl Fn(duckling_share::SessionId, duckling_share::ShareEvent) + Send + Sync + 'static
+    {
         let (tx, ctx) = (self.tx.clone(), self.ctx.clone());
         move |id, event| {
             let _ = tx.send(Event::Share(id, event));
@@ -479,8 +480,9 @@ impl Tasks {
                     .kind()
                     .ok_or("Vanilla instances have no mods to move")?;
                 // The loader build first: a version without one changes nothing.
-                let loader_version = duckling_core::loaders::default_loader_version(loader, &version)
-                    .map_err(|e| e.to_string())?;
+                let loader_version =
+                    duckling_core::loaders::default_loader_version(loader, &version)
+                        .map_err(|e| e.to_string())?;
                 let applied = mods::retarget::apply(
                     &instance.game_dir(&t.dirs).join("mods"),
                     &mods::index_path(&t.dirs.instance_dir(&instance.id)),

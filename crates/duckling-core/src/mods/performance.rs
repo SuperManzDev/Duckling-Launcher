@@ -122,11 +122,7 @@ fn index_path(game_dir: &Path) -> PathBuf {
         p
     } else {
         let legacy = game_dir.join("arctic-performance.json");
-        if legacy.exists() {
-            legacy
-        } else {
-            p
-        }
+        if legacy.exists() { legacy } else { p }
     }
 }
 
@@ -179,7 +175,11 @@ fn unstash(game_dir: &Path, game_version: &str, shaders: bool) -> Result<bool> {
     let index = index_path(&from);
     let state_file = {
         let p = state_path(&from);
-        if p.exists() { p } else { from.join("arctic-performance-state.json") }
+        if p.exists() {
+            p
+        } else {
+            from.join("arctic-performance-state.json")
+        }
     };
     let Some(state) = load_json::<State>(&state_file)? else {
         return Ok(false);

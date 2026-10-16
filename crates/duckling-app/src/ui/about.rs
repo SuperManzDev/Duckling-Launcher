@@ -34,9 +34,7 @@ impl DucklingApp {
             ui.label("A lightweight, cheerful duck-themed Minecraft launcher.");
             ui.add_space(8.0);
             crate::widgets::row(ui, |ui| {
-                if widgets::button(ui, p, Some(Icon::External), "GitHub Project", false)
-                    .clicked()
-                {
+                if widgets::button(ui, p, Some(Icon::External), "GitHub Project", false).clicked() {
                     ui.ctx().open_url(egui::OpenUrl::new_tab(WEBSITE));
                 }
                 if widgets::button(ui, p, Some(Icon::External), "Source on GitHub", false).clicked()

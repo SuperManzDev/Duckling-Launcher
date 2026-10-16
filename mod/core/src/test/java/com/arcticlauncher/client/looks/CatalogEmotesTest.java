@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 /** Every emote the cosmetics server offers can be played by the client. */
 class CatalogEmotesTest {
-	private static final File EMOTES = new File("../../crates/arctic-cosmetics/assets/emotes");
+	private static final File EMOTES = new File("../../crates/duckling-cosmetics/assets/emotes");
 
 	@Test
 	void everyCatalogEmoteParses() throws IOException {
