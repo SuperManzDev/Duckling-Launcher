@@ -569,6 +569,7 @@ pub fn token_for(dirs: &DataDirs, base: &str, account: &Account) -> Result<Strin
 /// system's machine id changed) reads as empty, and the server refuses an empty key as
 /// "invalid name or key" for good; a new key at least gets a clear answer (the name is claimed:
 /// use the recovery code) instead.
+#[cfg(any(feature = "offline-accounts", test))]
 fn usable_key(entry: &mut Credential) -> String {
     let fine = |k: &str| (32..=128).contains(&k.len()) && k.bytes().all(|b| b.is_ascii_hexdigit());
     if !entry.key.as_deref().is_some_and(fine) {
