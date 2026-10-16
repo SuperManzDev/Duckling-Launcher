@@ -1,0 +1,45 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build Launcher
+        run: cargo build --release -p duckling-app -p duckling-cli
+
+      - name: Stage Binaries
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/duckling-launcher.exe dist/duckling-launcher-windows-x64.exe
+          cp target/release/duckling.exe dist/duckling-windows-x64.exe
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: duckling-windows
+          path: dist/*
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v0.4.9" dist/* --title "Duckling Launcher v0.4.9" --notes "Duckling Launcher v0.4.9 release for Windows." --prerelease || gh release upload "v0.4.9" dist/* --clobber
