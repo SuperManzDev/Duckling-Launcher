@@ -1,0 +1,1031 @@
+﻿//! Cosmetics tab: your Arctic look (skin, cape and 3D cosmetics, seen by
+//! every Arctic player, on any account), your Minecraft skin and capes
+//! (Microsoft accounts), a 3D preview and a local library of skins.
+//!
+//! Clicking something wears it at once: the preview shows it right away
+//! (`trying`) while the look is saved in the background; clicks made while
+//! a save is still going are queued, and only the newest one is sent.
+
+mod cards;
+mod decode;
+mod gallery;
+mod gpu;
+mod model;
+mod panels;
+
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+
+use duckling_core::cosmetics::{CapeChoice, NewLook, Texture};
+use duckling_core::skins::{self, Library, SkinEntry, Variant};
+use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
+
+use crate::app::DucklingApp;
+use crate::skin_tasks::{AccountSkin, ArcticState, SkinChange};
+use crate::tasks::Event;
+use crate::toasts::Kind;
+
+/// The category picked in the rail on the right.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Section {
+    #[default]
+    Skins,
+    Capes,
+    /// 3D cosmetics of one slot (`head`, `face`...).
+    Slot(&'static str),
+}
+
+/// Something pointed at in a list, shown on the preview (not saved).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Hover {
+    Skin(String, Variant),
+    /// Texture key; `None`: no cape.
+    Cape(Option<String>),
+    /// The cosmetics that would be worn after a click.
+    Cosmetics(Vec<String>),
+}
+
+/// A change shown in the preview before the server has confirmed it.
+/// `Some(None)` means "taken off".
+#[derive(Debug, Clone, Default)]
+pub struct Trying {
+    /// Texture key and arm model.
+    pub skin: Option<Option<(String, Variant)>>,
+    /// Texture key.
+    pub cape: Option<Option<String>>,
+    pub cosmetics: Option<Vec<String>>,
+    /// How cosmetics sit (by id).
+    pub fit: Option<std::collections::BTreeMap<String, duckling_core::cosmetics::Fit>>,
+}
+
+/// Which skins the Skins section lists.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SkinsView {
+    #[default]
+    Library,
+    Gallery,
+}
+
+/// A skin or cape uploaded to the GPU.
+pub struct SkinTexture {
+    pub handle: TextureHandle,
+    /// Has the second layer on body and limbs (not a legacy 64×32 skin).
+    pub overlay: bool,
+    pub guessed: Variant,
+    /// Animated capes: one texture per frame (`handle` is the first).
+    frames: Vec<TextureHandle>,
+    /// How long each frame shows (the cape's own speed).
+    pub frame_secs: f64,
+}
+
+impl SkinTexture {
+    /// The texture to draw at `time` (seconds): animated capes cycle.
+    pub fn id_at(&self, time: f64) -> egui::TextureId {
+        if self.frames.is_empty() || duckling_core::cosmetics::reduce_cape_motion() {
+            return self.handle.id();
+        }
+        let frame = (time / self.frame_secs) as usize % self.frames.len();
+        self.frames[frame].id()
+    }
+
+    /// Moves on screen (animated, and the viewer hasn't asked to freeze capes).
+    pub fn animated(&self) -> bool {
+        !self.frames.is_empty() && !duckling_core::cosmetics::reduce_cape_motion()
+    }
+}
+
+/// Texture keys: `lib:<id>` library skin, `mc` Minecraft skin,
+/// `mccape:<id>` Minecraft cape, `askin:<hash>` Arctic skin,
+/// `acape:<hash>` Arctic cape, `acos:<hash>` Arctic cosmetic texture.
+#[derive(Default)]
+pub struct SkinsUi {
+    loaded_for: Option<PathBuf>,
+    pub library: Library,
+    textures: HashMap<String, SkinTexture>,
+    /// Keys whose PNG couldn't be read or decoded (not retried every frame).
+    failed: HashSet<String>,
+    /// Capes being decoded in the background.
+    decoder: decode::Decoder,
+    /// The cape card under the pointer: the only one animating.
+    animating: Option<String>,
+    /// When each cape texture was last drawn (unused ones are let go, see `forget_unused_capes`).
+    used: HashMap<String, std::time::Instant>,
+    pub section: Section,
+    pub trying: Trying,
+    /// The newest look asked for (sent or queued): later clicks build on it.
+    intended: Option<NewLook>,
+    /// Asked for while a save was still going; sent when it finishes.
+    queued: Option<NewLook>,
+    /// When the last save finished (for the "Saved" note).
+    pub saved_at: Option<f64>,
+    /// A skin the game picked before the look had loaded (worn once it has).
+    from_game: Option<Option<String>>,
+    /// Library skin id -> the hash the server would store it under.
+    lib_hashes: HashMap<String, String>,
+    /// The frame this tab was last drawn in (to notice it being reopened).
+    last_pass: u64,
+    /// Account id → Minecraft skin state (Microsoft accounts).
+    pub account: HashMap<String, Result<AccountSkin, String>>,
+    pub busy: bool,
+    /// Account id → Arctic look.
+    pub arctic: HashMap<String, Result<ArcticState, String>>,
+    pub arctic_busy: bool,
+    /// Public catalog shown before sign-in (or when account look loading fails).
+    pub public_catalog: Option<Result<ArcticState, String>>,
+    pub public_catalog_busy: bool,
+    pub player_name: String,
+    pub looking_up: bool,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub renaming: Option<(String, String)>,
+    pub view: SkinsView,
+    /// Capes you uploaded yourself (hashes, newest first): see duckling_core::skins::capes.
+    pub own_capes: Vec<String>,
+    pub gallery: gallery::GalleryUi,
+    /// Filters the list shown (skins, capes or cosmetics by name).
+    pub search: String,
+    /// Pointed at in the lists this frame (the preview shows it next frame).
+    pub hover: Option<Hover>,
+    /// Preview zoom (0 = not set yet: 1).
+    pub zoom: f32,
+    /// When the preview was last dragged (it turns by itself after a while).
+    pub dragged_at: f64,
+}
+
+impl DucklingApp {
+    fn skins_dir(&self) -> PathBuf {
+        Library::dir(self.dirs.profile_root())
+    }
+
+    pub(super) fn own_capes_dir(&self) -> PathBuf {
+        duckling_core::skins::capes::dir(self.dirs.profile_root())
+    }
+
+    /// Wear one of your own capes again (sent as its image, which the server keeps by hash).
+    pub(super) fn wear_own_cape(&mut self, hash: &str) {
+        match duckling_core::skins::capes::read(&self.own_capes_dir(), hash) {
+            Ok(png) => self.set_arctic_cape(
+                Some(CapeChoice::Custom(Texture::Png(png))),
+                Some(format!("acape:{hash}")),
+            ),
+            Err(e) => self
+                .toasts
+                .push(Kind::Error, "Could not read that cape", e.to_string()),
+        }
+    }
+
+    /// Take one of your own capes off the list (if it's worn, it stays worn).
+    pub(super) fn forget_own_cape(&mut self, hash: &str) {
+        match duckling_core::skins::capes::remove(&self.own_capes_dir(), hash) {
+            Ok(()) => self.skins.own_capes.retain(|h| h != hash),
+            Err(e) => self
+                .toasts
+                .push(Kind::Error, "Could not remove that cape", e.to_string()),
+        }
+    }
+
+    /// Load the library the first time the tab opens (per profile).
+    fn ensure_skin_library(&mut self) {
+        let dir = self.skins_dir();
+        if self.skins.loaded_for.as_ref() == Some(&dir) {
+            return;
+        }
+        // Debug builds: ARCTIC_DEVSHOT_YAW turns the preview (screenshots).
+        let yaw = std::env::var("ARCTIC_DEVSHOT_YAW")
+            .ok()
+            .filter(|_| crate::devshot::enabled())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0.5);
+        let view = if crate::devshot::enabled()
+            && std::env::var("ARCTIC_DEVSHOT_PAGE").as_deref() == Ok("gallery")
+        {
+            SkinsView::Gallery
+        } else {
+            SkinsView::Library
+        };
+        // Debug builds: ARCTIC_DEVSHOT_SECTION picks the section (screenshots).
+        let section = match std::env::var("ARCTIC_DEVSHOT_SECTION")
+            .ok()
+            .filter(|_| crate::devshot::enabled())
+            .as_deref()
+        {
+            Some("capes") => Section::Capes,
+            Some("cosmetics") => Section::Slot("head"),
+            Some("face") => Section::Slot("face"),
+            Some("back") => Section::Slot("back"),
+            Some("shoulders") => Section::Slot("shoulders"),
+            Some("arms") => Section::Slot("arms"),
+            Some("body") => Section::Slot("body"),
+            _ => Section::default(),
+        };
+        self.skins = SkinsUi {
+            view,
+            yaw,
+            pitch: 0.12,
+            section,
+            ..SkinsUi::default()
+        };
+        // A set screenshot angle stays put (no turning by itself).
+        if crate::devshot::enabled() && std::env::var_os("ARCTIC_DEVSHOT_YAW").is_some() {
+            self.skins.dragged_at = -1.0;
+        }
+        self.skins.own_capes = duckling_core::skins::capes::list(&self.own_capes_dir());
+        match Library::load(&dir) {
+            Ok(mut lib) => {
+                if let Err(e) = lib.dedupe(&dir) {
+                    log::warn!("skin library cleanup: {e}");
+                }
+                self.skins.library = lib;
+                // Nothing saved yet (every new player): start on the gallery, not an empty list.
+                if self.skins.library.skins.is_empty() && !crate::devshot::enabled() {
+                    self.skins.view = SkinsView::Gallery;
+                }
+            }
+            Err(e) => self.toasts.push(
+                Kind::Error,
+                "Could not read your skin library",
+                e.to_string(),
+            ),
+        }
+        self.skins.loaded_for = Some(dir);
+    }
+
+    pub(crate) fn skins_tab(&mut self, ui: &mut egui::Ui) {
+        self.ensure_skin_library();
+        // Opened again: start from what you're wearing, not half-done edits.
+        let pass = ui.ctx().cumulative_pass_nr();
+        if pass > self.skins.last_pass + 1 {
+            self.skins.renaming = None;
+        }
+        self.skins.last_pass = pass;
+        self.request_skin_state(false);
+        self.skins_page(ui);
+        self.accept_dropped_skins(ui.ctx());
+    }
+
+    /// Fetch the active account's Arctic look (and Minecraft skin) once, or
+    /// again with `force`.
+    fn request_skin_state(&mut self, force: bool) {
+        let Some(account) = self.accounts.active().cloned() else {
+            if (force || self.skins.public_catalog.is_none()) && !self.skins.public_catalog_busy {
+                self.skins.public_catalog_busy = true;
+                self.tasks.arctic_catalog();
+            }
+            return;
+        };
+        if (force || !self.skins.arctic.contains_key(&account.id)) && !self.skins.arctic_busy {
+            self.skins.arctic_busy = true;
+            self.tasks.arctic_look(account.clone(), None, None);
+        }
+        if matches!(self.skins.arctic.get(&account.id), Some(Err(_)))
+            && self.skins.public_catalog.is_none()
+            && !self.skins.public_catalog_busy
+        {
+            self.skins.public_catalog_busy = true;
+            self.tasks.arctic_catalog();
+        }
+        if account.is_microsoft()
+            && (force || !self.skins.account.contains_key(&account.id))
+            && !self.skins.busy
+        {
+            self.skins.busy = true;
+            self.tasks.skin_account(account, SkinChange::None);
+        }
+    }
+
+    fn change_minecraft_skin(&mut self, change: SkinChange) {
+        let Some(account) = self.accounts.active().cloned() else {
+            return;
+        };
+        self.skins.busy = true;
+        self.tasks.skin_account(account, change);
+    }
+
+    pub(crate) fn arctic_state(&self) -> Option<&ArcticState> {
+        let account = self.accounts.active()?;
+        self.skins.arctic.get(&account.id)?.as_ref().ok()
+    }
+
+    /// Read-only assets for the cards and preview; wearing still needs `arctic_state`.
+    pub(crate) fn catalog_state(&self) -> Option<&ArcticState> {
+        self.arctic_state().or_else(|| {
+            self.skins
+                .public_catalog
+                .as_ref()
+                .and_then(|result| result.as_ref().ok())
+        })
+    }
+
+    /// Wear a change right away (`show` puts it in the preview) and save it:
+    /// now, or after the save in progress (only the newest change is sent).
+    fn change_look(&mut self, edit: impl FnOnce(&mut NewLook), show: impl FnOnce(&mut Trying)) {
+        let (Some(account), Some(state)) = (
+            self.accounts.active().cloned(),
+            self.arctic_state().cloned(),
+        ) else {
+            return;
+        };
+        let mut look = self
+            .skins
+            .intended
+            .clone()
+            .unwrap_or_else(|| state.current());
+        edit(&mut look);
+        show(&mut self.skins.trying);
+        self.skins.intended = Some(look.clone());
+        self.skins.saved_at = None;
+        if self.skins.arctic_busy {
+            self.skins.queued = Some(look);
+        } else {
+            self.skins.arctic_busy = true;
+            self.tasks.arctic_look(account, Some(look), Some(state));
+        }
+    }
+
+    fn wear_skin(&mut self, entry: &SkinEntry) {
+        match Library::read_png(&self.skins_dir(), &entry.id) {
+            Ok(png) => {
+                let variant = entry.variant;
+                let key = format!("lib:{}", entry.id);
+                self.change_look(
+                    |l| l.skin = Some((Texture::Png(png), variant)),
+                    |t| t.skin = Some(Some((key, variant))),
+                );
+            }
+            Err(e) => self
+                .toasts
+                .push(Kind::Error, "Could not read skin", e.to_string()),
+        }
+    }
+
+    /// The game's skin picker chose a library skin (`None`: the Minecraft skin).
+    pub(crate) fn wear_skin_from_game(&mut self, id: Option<String>) {
+        let Some(id) = id else {
+            if self.arctic_state().is_none() {
+                self.skins.from_game = Some(None);
+            }
+            self.stop_wearing_skin();
+            return;
+        };
+        self.ensure_skin_library();
+        if self.arctic_state().is_none() {
+            // The look isn't loaded yet (the Cosmetics tab never opened): load
+            // it, then wear this.
+            if let Some(account) = self.accounts.active().cloned()
+                && !self.skins.arctic_busy
+            {
+                self.skins.arctic_busy = true;
+                self.tasks.arctic_look(account, None, None);
+            }
+            self.skins.from_game = Some(Some(id));
+            return;
+        }
+        let entry = self
+            .skins
+            .library
+            .skins
+            .iter()
+            .find(|s| s.id == id)
+            .cloned();
+        match entry {
+            Some(entry) => self.wear_skin(&entry),
+            None => log::warn!("the game picked skin {id}, which isn't in the library"),
+        }
+    }
+
+    /// Back to the Minecraft skin (for Arctic players too).
+    fn stop_wearing_skin(&mut self) {
+        self.change_look(|l| l.skin = None, |t| t.skin = Some(None));
+    }
+
+    /// `key`: the cape's texture key for the preview (`None`: no cape).
+    fn set_arctic_cape(&mut self, cape: Option<CapeChoice>, key: Option<String>) {
+        self.change_look(|l| l.cape = cape, |t| t.cape = Some(key));
+    }
+
+    /// Turn "Animate" on or off for one cape (remembered per cape); if it is
+    /// the cape being worn, publish the matching image at once.
+    fn set_cape_animate(&mut self, preset: &duckling_core::cosmetics::Preset, on: bool) {
+        let wearing = self.worn_animated_cape().is_some_and(|w| w.id == preset.id);
+        self.settings.capes_still.retain(|id| id != &preset.id);
+        if !on {
+            self.settings.capes_still.push(preset.id.clone());
+        }
+        self.persist_settings();
+        if wearing {
+            let shown = match (&preset.still, on) {
+                (Some(still), false) => still.clone(),
+                _ => preset.texture.clone(),
+            };
+            self.set_arctic_cape(Some(preset.choice(on)), Some(format!("acape:{shown}")));
+        }
+    }
+
+    /// How worn cosmetics sit, including a change still being saved.
+    pub(super) fn current_fits(
+        &self,
+    ) -> std::collections::BTreeMap<String, duckling_core::cosmetics::Fit> {
+        // Debug builds: ARCTIC_DEVSHOT_FIT=id:up,forward,mirror;... (screenshots).
+        if crate::devshot::enabled()
+            && let Ok(spec) = std::env::var("ARCTIC_DEVSHOT_FIT")
+        {
+            return spec
+                .split(';')
+                .filter_map(|one| {
+                    let (id, v) = one.split_once(':')?;
+                    let n: Vec<i8> = v.split(',').filter_map(|x| x.parse().ok()).collect();
+                    let fit = duckling_core::cosmetics::Fit {
+                        up: *n.first()?,
+                        forward: *n.get(1)?,
+                        mirror: n.get(2) == Some(&1),
+                    };
+                    Some((id.to_owned(), fit))
+                })
+                .collect();
+        }
+        match (&self.skins.trying.fit, self.arctic_state()) {
+            (Some(fit), _) => fit.clone(),
+            (None, Some(state)) => state.look.fit.clone(),
+            (None, None) => Default::default(),
+        }
+    }
+
+    /// Wear `id` like this (the default fit forgets it).
+    pub(super) fn set_fit(&mut self, id: &str, fit: duckling_core::cosmetics::Fit) {
+        let mut all = self.current_fits();
+        if fit.is_default() {
+            all.remove(id);
+        } else {
+            all.insert(id.to_owned(), fit);
+        }
+        let shown = all.clone();
+        self.change_look(|l| l.fit = Some(all), |t| t.fit = Some(shown));
+    }
+
+    fn set_cosmetics(&mut self, ids: Vec<String>) {
+        let shown = ids.clone();
+        self.change_look(|l| l.cosmetics = Some(ids), |t| t.cosmetics = Some(shown));
+    }
+
+    /// The server's hash for a library skin (worked out once).
+    fn library_hash(&mut self, id: &str) -> Option<String> {
+        if !self.skins.lib_hashes.contains_key(id) {
+            let png = Library::read_png(&self.skins_dir(), id).ok()?;
+            self.skins
+                .lib_hashes
+                .insert(id.to_owned(), duckling_core::cosmetics::texture_hash(&png));
+        }
+        self.skins.lib_hashes.get(id).cloned()
+    }
+
+    /// Texture for a key (see `SkinsUi`), uploading on first use. A cape key ending in
+    /// [`STILL`] is its first frame only.
+    pub(crate) fn skin_texture(&mut self, ctx: &egui::Context, key: &str) -> Option<&SkinTexture> {
+        if is_cape(key) {
+            self.skins
+                .used
+                .insert(key.to_owned(), std::time::Instant::now());
+        }
+        if key == MANNEQUIN && !self.skins.textures.contains_key(key) {
+            self.skins.textures.insert(key.to_owned(), mannequin(ctx));
+        }
+        if key == WHITE && !self.skins.textures.contains_key(key) {
+            self.skins.textures.insert(key.to_owned(), white(ctx));
+        }
+        if !self.skins.textures.contains_key(key) {
+            if self.skins.failed.contains(key) {
+                return None;
+            }
+            self.take_decoded(ctx);
+            if self.skins.textures.contains_key(key) {
+                return self.skins.textures.get(key);
+            }
+            if self.skins.decoder.is_pending(key) {
+                return None;
+            }
+            let png = self.skin_png(full_key(key))?;
+            // Capes can be huge stacks of frames: decoded in the background.
+            if is_cape(key) {
+                self.skins
+                    .decoder
+                    .request(ctx, key, png, CAPE_WIDTH, key.ends_with(STILL));
+                return None;
+            }
+            let Some(mut texture) = upload(ctx, key, &png) else {
+                self.skins.failed.insert(key.to_owned());
+                return None;
+            };
+            if let Some(secs) = self.cape_frame_secs(key) {
+                texture.frame_secs = secs;
+            }
+            self.skins.textures.insert(key.to_owned(), texture);
+        }
+        self.skins.textures.get(key)
+    }
+
+    /// Upload the capes the background decoder has finished.
+    fn take_decoded(&mut self, ctx: &egui::Context) {
+        for done in self.skins.decoder.finished(ctx) {
+            let Some(frames) = done.frames else {
+                self.skins.failed.insert(done.key);
+                continue;
+            };
+            let Some(mut texture) = cape_texture(ctx, &done.key, frames) else {
+                self.skins.failed.insert(done.key);
+                continue;
+            };
+            if let Some(secs) = self.cape_frame_secs(&done.key) {
+                texture.frame_secs = secs;
+            }
+            self.skins.textures.insert(done.key, texture);
+        }
+    }
+
+    /// Let go of cape textures not drawn for a while: the Cosmetics tab's capes after leaving
+    /// it, or ones scrolled away. They're decoded again when they come back.
+    pub(crate) fn forget_unused_capes(&mut self) {
+        let now = std::time::Instant::now();
+        let stale: Vec<String> = self
+            .skins
+            .used
+            .iter()
+            .filter(|(_, at)| now.duration_since(**at) > UNUSED_CAPE)
+            .map(|(k, _)| k.clone())
+            .collect();
+        for key in stale {
+            self.skins.used.remove(&key);
+            self.skins.textures.remove(&key);
+        }
+    }
+
+    /// The playback speed a preset cape asks for (`acape:` keys; others play at the default).
+    fn cape_frame_secs(&self, key: &str) -> Option<f64> {
+        let hash = full_key(key).strip_prefix("acape:")?;
+        let presets = &self.catalog_state()?.presets;
+        presets
+            .iter()
+            .find(|p| p.is_texture(hash))
+            .map(duckling_core::cosmetics::Preset::frame_secs)
+    }
+
+    fn skin_png(&self, key: &str) -> Option<Vec<u8>> {
+        // A texture embedded in a mesh cosmetic: `amesh:<mesh hash>:<image number>`.
+        if let Some(rest) = key.strip_prefix("amesh:") {
+            let (hash, number) = rest.split_once(':')?;
+            let (_, mesh) = self
+                .catalog_state()?
+                .meshes
+                .iter()
+                .find(|(item, _)| item.mesh == hash)?;
+            return mesh.images.get(number.parse::<usize>().ok()?).cloned();
+        }
+        if let Some(id) = key.strip_prefix("lib:") {
+            return Library::read_png(&self.skins_dir(), id).ok();
+        }
+        if let Some(hash) = key.strip_prefix("gal:") {
+            return self.skins.gallery.pngs.get(hash).cloned();
+        }
+        if let Some(hash) = key
+            .strip_prefix("askin:")
+            .or_else(|| key.strip_prefix("acape:"))
+            .or_else(|| key.strip_prefix("acos:"))
+        {
+            return self.catalog_state()?.png(hash).map(<[u8]>::to_vec);
+        }
+        let account = self.accounts.active()?;
+        let state = self.skins.account.get(&account.id)?.as_ref().ok()?;
+        match key.strip_prefix("mccape:") {
+            Some(cape) => state
+                .capes
+                .iter()
+                .find(|(id, _)| id == cape)
+                .map(|(_, png)| png.clone()),
+            None if key == "mc" => state.skin_png.clone(),
+            None => None,
+        }
+    }
+
+    /// Add a skin to the library (or find it there); its entry.
+    fn add_skin(&mut self, name: &str, png: &[u8], variant: Option<Variant>) -> Option<SkinEntry> {
+        let dir = self.skins_dir();
+        if let Some(existing) = self.skins.library.find_same(&dir, png) {
+            let existing = existing.clone();
+            self.toasts
+                .push(Kind::Info, "Already in your library", existing.name.clone());
+            return Some(existing);
+        }
+        match self.skins.library.add(&dir, name, png, variant) {
+            Ok(entry) => {
+                self.toasts
+                    .push(Kind::Success, format!("Added {}", entry.name), "");
+                Some(entry)
+            }
+            Err(e) => {
+                self.toasts
+                    .push(Kind::Error, "Could not add skin", e.to_string());
+                None
+            }
+        }
+    }
+
+    fn remove_skin(&mut self, id: &str) {
+        let dir = self.skins_dir();
+        if let Err(e) = self.skins.library.remove(&dir, id) {
+            self.toasts
+                .push(Kind::Error, "Could not delete skin", e.to_string());
+        }
+        self.skins.textures.remove(&format!("lib:{id}"));
+        self.skins.lib_hashes.remove(id);
+    }
+
+    fn update_skin(&mut self, id: &str, change: impl FnOnce(&mut SkinEntry)) {
+        let dir = self.skins_dir();
+        if let Err(e) = self.skins.library.update(&dir, id, change) {
+            self.toasts
+                .push(Kind::Error, "Could not save skin", e.to_string());
+        }
+    }
+
+    fn set_minecraft_skin(&mut self, entry: &SkinEntry) {
+        match Library::read_png(&self.skins_dir(), &entry.id) {
+            Ok(png) => self.change_minecraft_skin(SkinChange::Upload(entry.variant, png)),
+            Err(e) => self
+                .toasts
+                .push(Kind::Error, "Could not read skin", e.to_string()),
+        }
+    }
+
+    /// PNG files dropped onto the window while the tab is open.
+    fn accept_dropped_skins(&mut self, ctx: &egui::Context) {
+        let dropped = ctx.input(|i| i.raw.dropped_files.clone());
+        for file in dropped {
+            let bytes = match file.bytes() {
+                Ok(b) => b,
+                Err(e) => {
+                    self.toasts.push(Kind::Error, "Could not read file", e);
+                    continue;
+                }
+            };
+            let name = crate::skin_tasks::file_stem(file.path());
+            let _ = self.add_skin(&name, &bytes, None);
+        }
+    }
+
+    /// A load or save came back: show the server's look, or send the change
+    /// that was queued meanwhile.
+    /// An offline account's avatar is the face of the skin it wears (Microsoft accounts get theirs
+    /// from Mojang).
+    fn update_offline_face(&mut self, account_id: &str, state: &ArcticState) {
+        let Some(account) = self
+            .accounts
+            .accounts
+            .iter()
+            .find(|a| a.id == account_id && !a.is_microsoft())
+        else {
+            return;
+        };
+        let Some(png) = state.look.skin.as_deref().and_then(|h| state.png(h)) else {
+            return;
+        };
+        match duckling_core::auth::avatar::face_from_skin(png) {
+            Ok(face) => {
+                duckling_core::auth::avatar::store_face(&self.dirs, &account.uuid, &face);
+                self.faces.insert(account.uuid.clone(), face);
+            }
+            Err(e) => log::debug!("avatar from the worn skin: {e}"),
+        }
+    }
+
+    fn on_look_saved(&mut self, account_id: String, result: Result<ArcticState, String>) {
+        self.skins.arctic_busy = false;
+        self.skins.failed.clear();
+        let had_look = self
+            .skins
+            .arctic
+            .get(&account_id)
+            .is_some_and(Result::is_ok);
+        let queued = self.skins.queued.take();
+        match result {
+            Err(e) if had_look => {
+                // A save failed: back to the look the server has.
+                self.skins.intended = None;
+                self.skins.trying = Trying::default();
+                self.toasts.push(Kind::Error, "Couldn't save your look", e);
+            }
+            result => {
+                let ok = result.is_ok();
+                if let Ok(state) = &result {
+                    self.update_offline_face(&account_id, state);
+                }
+                self.skins.arctic.insert(account_id.clone(), result);
+                let active = self.accounts.active().cloned();
+                let state = self.arctic_state().cloned();
+                match (queued, active, state) {
+                    (Some(next), Some(account), Some(state)) if ok && account.id == account_id => {
+                        self.skins.arctic_busy = true;
+                        self.tasks.arctic_look(account, Some(next), Some(state));
+                    }
+                    _ => {
+                        self.skins.intended = None;
+                        self.skins.trying = Trying::default();
+                        if ok && had_look {
+                            self.skins.saved_at = Some(now_secs_f64());
+                        }
+                        if ok && let Some(picked) = self.skins.from_game.take() {
+                            self.wear_skin_from_game(picked);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn on_skins_event(&mut self, event: Event) {
+        match event {
+            Event::SkinAccount(account_id, result) => {
+                self.skins.busy = false;
+                self.skins.textures.retain(|k, _| !k.starts_with("mc"));
+                self.skins.failed.clear();
+                if let Err(e) = &result {
+                    self.toasts
+                        .push(Kind::Error, "Minecraft skin change failed", e.clone());
+                }
+                self.skins.account.insert(account_id, result);
+            }
+            Event::ArcticLook(account_id, result) => self.on_look_saved(account_id, result),
+            Event::ArcticCatalog(result) => {
+                self.skins.public_catalog_busy = false;
+                if let Err(e) = &result {
+                    log::warn!("public looks catalog: {e}");
+                }
+                self.skins.public_catalog = Some(result);
+            }
+            Event::PlayerSkin(name, result) => {
+                self.skins.looking_up = false;
+                match result {
+                    Ok((png, variant)) => {
+                        let _ = self.add_skin(&name, &png, Some(variant));
+                        self.skins.player_name.clear();
+                    }
+                    Err(e) => self.toasts.push(Kind::Error, "Could not get skin", e),
+                }
+            }
+            Event::SkinFile(result) => match result {
+                Ok(Some((name, bytes))) => {
+                    let _ = self.add_skin(&name, &bytes, None);
+                }
+                Ok(None) => {}
+                Err(e) => self.toasts.push(Kind::Error, "Could not read file", e),
+            },
+            e @ (Event::Gallery(..) | Event::GalleryTaken(..) | Event::GalleryDone(..)) => {
+                self.on_gallery_event(e)
+            }
+            Event::CapeFile(result) => match result {
+                Ok(Some(bytes)) => {
+                    // Kept with your other capes, to wear again later in one click.
+                    match duckling_core::skins::capes::save(&self.own_capes_dir(), &bytes) {
+                        Ok(hash) => {
+                            self.skins.own_capes.retain(|h| h != &hash);
+                            self.skins.own_capes.insert(0, hash);
+                        }
+                        Err(e) => log::warn!("keeping the cape: {e}"),
+                    }
+                    // Shown by its hash once saved; until then the old cape stays.
+                    self.set_arctic_cape(Some(CapeChoice::Custom(Texture::Png(bytes))), None);
+                    self.skins.trying.cape = None;
+                }
+                Ok(None) => {}
+                Err(e) => self.toasts.push(Kind::Error, "Could not read file", e),
+            },
+            _ => {}
+        }
+    }
+}
+
+fn upload(ctx: &egui::Context, key: &str, png: &[u8]) -> Option<SkinTexture> {
+    // Capes are 64×32 (or larger multiples, or stacked animation frames);
+    // skins go through the skin decoder.
+    if key.starts_with("mccape:") || key.starts_with("acape:") {
+        return upload_cape(ctx, key, png);
+    }
+    if key.starts_with("acos:") {
+        return upload_plain(ctx, key, png);
+    }
+    if key.starts_with("amesh:") {
+        return upload_mesh_texture(ctx, key, png);
+    }
+    let image = skins::decode(png).ok()?;
+    let color = ColorImage::from_rgba_unmultiplied([64, 64], &image.rgba);
+    let handle = ctx.load_texture(key, color, TextureOptions::NEAREST);
+    Some(SkinTexture {
+        handle,
+        overlay: !image.legacy,
+        guessed: image.guess_variant(),
+        frames: Vec::new(),
+        frame_secs: duckling_core::cosmetics::CAPE_FRAME_SECS,
+    })
+}
+
+/// Texture key of a single white texel (for meshes painted with vertex colors alone).
+pub(crate) const WHITE: &str = "white";
+
+fn white(ctx: &egui::Context) -> SkinTexture {
+    let color = ColorImage::from_rgba_unmultiplied([2, 2], &[255; 16]);
+    SkinTexture {
+        handle: ctx.load_texture(WHITE, color, TextureOptions::NEAREST),
+        overlay: false,
+        guessed: Variant::Classic,
+        frames: Vec::new(),
+        frame_secs: duckling_core::cosmetics::CAPE_FRAME_SECS,
+    }
+}
+
+/// A texture embedded in a mesh cosmetic (any size up to 1024 on a side; the
+/// mesh file's own check already looked at the header).
+fn upload_mesh_texture(ctx: &egui::Context, key: &str, png: &[u8]) -> Option<SkinTexture> {
+    let (w, h) = duckling_core::cosmetics::png_size(png)?;
+    let max = duckling_core::cosmetic_models::mesh::MAX_TEXTURE_SIDE;
+    if w == 0 || h == 0 || w > max || h > max {
+        return None;
+    }
+    let image = image::load_from_memory(png).ok()?.to_rgba8();
+    let size = [image.width() as usize, image.height() as usize];
+    let color = ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+    Some(SkinTexture {
+        handle: ctx.load_texture(key, color, TextureOptions::NEAREST),
+        overlay: false,
+        guessed: Variant::Classic,
+        frames: Vec::new(),
+        frame_secs: duckling_core::cosmetics::CAPE_FRAME_SECS,
+    })
+}
+
+/// Texture key of the display model shown when there's no skin yet.
+pub(crate) const MANNEQUIN: &str = "mannequin";
+
+/// A small, original Minecraft-style skin for trying on cosmetics before a
+/// player skin is selected. Only the standard 64×64 base UV islands are drawn.
+fn mannequin(ctx: &egui::Context) -> SkinTexture {
+    let mut rgba = vec![0u8; 64 * 64 * 4];
+    let mut paint = |x0: usize, y0: usize, w: usize, h: usize, color: [u8; 4]| {
+        for y in y0..y0 + h {
+            for x in x0..x0 + w {
+                let i = (y * 64 + x) * 4;
+                rgba[i..i + 4].copy_from_slice(&color);
+            }
+        }
+    };
+    const HAIR: [u8; 4] = [37, 34, 53, 255];
+    const HAIR_LIGHT: [u8; 4] = [72, 65, 92, 255];
+    const SKIN: [u8; 4] = [226, 169, 129, 255];
+    const SKIN_SIDE: [u8; 4] = [198, 133, 104, 255];
+    const EYE: [u8; 4] = [29, 39, 55, 255];
+    const JACKET: [u8; 4] = [39, 87, 139, 255];
+    const JACKET_SIDE: [u8; 4] = [31, 66, 111, 255];
+    const JACKET_BACK: [u8; 4] = [35, 76, 124, 255];
+    const TRIM: [u8; 4] = [82, 211, 215, 255];
+    const SHIRT: [u8; 4] = [235, 227, 205, 255];
+    const PANTS: [u8; 4] = [42, 54, 78, 255];
+    const PANTS_SIDE: [u8; 4] = [33, 43, 64, 255];
+    const BOOTS: [u8; 4] = [24, 35, 52, 255];
+
+    // Head: a readable, deliberately simple face, with shaded sides and a
+    // short blocky fringe. The back stays quiet beneath capes and headpieces.
+    paint(8, 0, 8, 8, HAIR);
+    paint(16, 0, 8, 8, HAIR);
+    paint(0, 8, 8, 8, SKIN_SIDE);
+    paint(8, 8, 8, 8, SKIN);
+    paint(16, 8, 8, 8, SKIN_SIDE);
+    paint(24, 8, 8, 8, HAIR);
+    paint(0, 8, 8, 3, HAIR);
+    paint(16, 8, 8, 3, HAIR);
+    paint(8, 8, 8, 2, HAIR);
+    paint(8, 10, 2, 1, HAIR);
+    paint(14, 10, 2, 1, HAIR);
+    paint(10, 11, 1, 2, EYE);
+    paint(13, 11, 1, 2, EYE);
+    paint(11, 14, 2, 1, SKIN_SIDE);
+    paint(9, 1, 5, 1, HAIR_LIGHT);
+    paint(25, 9, 5, 1, HAIR_LIGHT);
+
+    // Jacket: clear cyan shoulder line and cuffs, restrained back detail so
+    // the cape or cosmetic remains the focus of the try-on.
+    paint(20, 16, 8, 4, JACKET);
+    paint(28, 16, 8, 4, JACKET_SIDE);
+    paint(16, 20, 4, 12, JACKET_SIDE);
+    paint(20, 20, 8, 12, JACKET);
+    paint(28, 20, 4, 12, JACKET_SIDE);
+    paint(32, 20, 8, 12, JACKET_BACK);
+    paint(20, 20, 8, 1, TRIM);
+    paint(32, 20, 8, 1, TRIM);
+    paint(23, 21, 2, 9, SHIRT);
+    paint(23, 22, 2, 1, TRIM);
+    paint(20, 30, 8, 2, JACKET_SIDE);
+    paint(33, 23, 1, 5, TRIM);
+    paint(38, 23, 1, 5, TRIM);
+
+    // Both classic-width arms use the same colors but their own UV islands.
+    for (x, y) in [(40, 16), (32, 48)] {
+        paint(x + 4, y, 4, 4, JACKET);
+        paint(x + 8, y, 4, 4, JACKET_SIDE);
+        paint(x, y + 4, 4, 12, JACKET_SIDE);
+        paint(x + 4, y + 4, 4, 12, JACKET);
+        paint(x + 8, y + 4, 4, 12, JACKET_SIDE);
+        paint(x + 12, y + 4, 4, 12, JACKET_BACK);
+        paint(x + 4, y + 4, 4, 1, TRIM);
+        paint(x + 4, y + 12, 4, 1, TRIM);
+        paint(x, y + 13, 16, 3, SKIN_SIDE);
+        paint(x + 4, y + 13, 4, 3, SKIN);
+    }
+
+    // Trouser legs and boots are dark enough to keep bright cosmetics legible.
+    for (x, y) in [(0, 16), (16, 48)] {
+        paint(x + 4, y, 4, 4, PANTS);
+        paint(x + 8, y, 4, 4, PANTS_SIDE);
+        paint(x, y + 4, 4, 12, PANTS_SIDE);
+        paint(x + 4, y + 4, 4, 12, PANTS);
+        paint(x + 8, y + 4, 4, 12, PANTS_SIDE);
+        paint(x + 12, y + 4, 4, 12, PANTS_SIDE);
+        paint(x, y + 13, 16, 3, BOOTS);
+        paint(x + 5, y + 6, 1, 6, JACKET_SIDE);
+    }
+    let color = ColorImage::from_rgba_unmultiplied([64, 64], &rgba);
+    SkinTexture {
+        handle: ctx.load_texture(MANNEQUIN, color, TextureOptions::NEAREST),
+        overlay: false,
+        guessed: Variant::Classic,
+        frames: Vec::new(),
+        frame_secs: duckling_core::cosmetics::CAPE_FRAME_SECS,
+    }
+}
+
+/// Largest cosmetic texture side (as the server and game allow).
+const MAX_COSMETIC_TEXTURE: u32 = 512;
+
+/// A cosmetic texture: any power-of-two PNG up to 512 on a side.
+fn upload_plain(ctx: &egui::Context, key: &str, png: &[u8]) -> Option<SkinTexture> {
+    let (w, h) = duckling_core::cosmetics::png_size(png)?;
+    let side = |s: u32| (1..=MAX_COSMETIC_TEXTURE).contains(&s) && s.is_power_of_two();
+    if !side(w) || !side(h) {
+        return None;
+    }
+    let image = image::load_from_memory(png).ok()?.to_rgba8();
+    let size = [image.width() as usize, image.height() as usize];
+    let color = ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+    let handle = ctx.load_texture(key, color, TextureOptions::NEAREST);
+    Some(SkinTexture {
+        handle,
+        overlay: false,
+        guessed: Variant::Classic,
+        frames: Vec::new(),
+        frame_secs: duckling_core::cosmetics::CAPE_FRAME_SECS,
+    })
+}
+
+/// A cape texture; animated capes become one texture per frame.
+fn upload_cape(ctx: &egui::Context, key: &str, png: &[u8]) -> Option<SkinTexture> {
+    cape_texture(ctx, key, decode::cape_frames(png, CAPE_WIDTH)?)
+}
+
+/// Appended to a cape key for its first frame alone: cards stand still until hovered.
+pub(super) const STILL: &str = "@still";
+/// Capes are kept at most this wide. A card shows the back ~110 px tall and the 3D preview
+/// about as big; a 512-wide cape's back is 128 pixels, and each frame is a quarter of a
+/// 1024-wide one's 2 MB.
+const CAPE_WIDTH: u32 = 512;
+/// A cape texture not drawn for this long is let go.
+const UNUSED_CAPE: std::time::Duration = std::time::Duration::from_secs(20);
+
+fn is_cape(key: &str) -> bool {
+    key.starts_with("mccape:") || key.starts_with("acape:")
+}
+
+/// The key without the still-frame suffix.
+fn full_key(key: &str) -> &str {
+    key.strip_suffix(STILL).unwrap_or(key)
+}
+
+/// Decoded cape frames as textures (one per frame).
+fn cape_texture(ctx: &egui::Context, key: &str, frames: Vec<ColorImage>) -> Option<SkinTexture> {
+    let count = frames.len();
+    let frames: Vec<TextureHandle> = frames
+        .into_iter()
+        .enumerate()
+        .map(|(i, color)| ctx.load_texture(format!("{key}#{i}"), color, TextureOptions::NEAREST))
+        .collect();
+    let handle = frames.first()?.clone();
+    Some(SkinTexture {
+        handle,
+        overlay: false,
+        guessed: Variant::Classic,
+        frames: if count > 1 { frames } else { Vec::new() },
+        frame_secs: duckling_core::cosmetics::CAPE_FRAME_SECS,
+    })
+}
+
+/// Seconds since the Unix epoch, for "saved just now" notes.
+fn now_secs_f64() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64())
+}

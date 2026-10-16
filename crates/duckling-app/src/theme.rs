@@ -1,0 +1,331 @@
+﻿//! Color themes. `Default` is the aurora night, `Dark` is a quieter graphite
+//! night, `Light` is a daytime arctic. Each palette also drives the painted
+//! scenery (`art::scenery`).
+
+use duckling_core::settings::ThemeMode;
+use eframe::egui::{self, Color32, CornerRadius, Stroke, Theme};
+
+const fn rgb(hex: u32) -> Color32 {
+    Color32::from_rgb((hex >> 16) as u8, (hex >> 8) as u8, hex as u8)
+}
+
+/// Unmultiplied `#rrggbb` + alpha, premultiplied at compile time.
+const fn rgba(hex: u32, alpha: u8) -> Color32 {
+    Color32::from_rgba_premultiplied(
+        premultiply(hex >> 16, alpha),
+        premultiply(hex >> 8, alpha),
+        premultiply(hex, alpha),
+        alpha,
+    )
+}
+
+const fn premultiply(channel: u32, alpha: u8) -> u8 {
+    ((channel & 0xff) * alpha as u32 / 255) as u8
+}
+
+/// Colors for the painted backdrop.
+pub struct Scene {
+    /// Sky gradient: top, middle, horizon.
+    pub sky: [Color32; 3],
+    pub star_strength: f32,
+    pub aurora_strength: f32,
+    pub snow: Color32,
+    /// Ridge outline color (alpha-blended).
+    pub rim: Color32,
+    pub snow_cap: Color32,
+    /// (ridge color, base color) for the far, middle and near layers.
+    pub mountains: [(Color32, Color32); 3],
+    pub celestial: Celestial,
+    /// Haze drawn between mountain layers (alpha-blended).
+    pub mist: Color32,
+    /// Pine tree silhouettes along the bottom edge.
+    pub trees: Color32,
+}
+
+/// The body in the sky.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Celestial {
+    Moon,
+    Sun,
+}
+
+pub struct Palette {
+    pub dark: bool,
+    /// Cards and the sidebar frost the backdrop behind them (see `glass`).
+    pub glass: bool,
+    pub bg: Color32,
+    pub surface: Color32,
+    pub surface_hover: Color32,
+    pub accent: Color32,
+    pub accent_deep: Color32,
+    /// Text drawn on top of the accent color (Play button).
+    pub on_accent: Color32,
+    pub text: Color32,
+    pub muted: Color32,
+    pub warn: Color32,
+    pub error: Color32,
+    pub card_fill: Color32,
+    pub card_stroke: Color32,
+    pub nav_fill: Color32,
+    /// Native title bar color (matches the sidebar over the sky). Only
+    /// Windows lets apps tint the native title bar.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub titlebar: Color32,
+    pub shadow: Color32,
+    pub scene: Scene,
+}
+
+pub static DEFAULT: Palette = Palette {
+    dark: true,
+    glass: false,
+    bg: rgb(0x0b1320),
+    surface: rgb(0x16243a),
+    surface_hover: rgb(0x1e314d),
+    accent: rgb(0x7dd3fc),
+    accent_deep: rgb(0x38bdf8),
+    on_accent: rgb(0x0b1320),
+    text: rgb(0xe6f1ff),
+    muted: rgb(0x8aa4c2),
+    warn: rgb(0xfbbf24),
+    error: rgb(0xf87171),
+    card_fill: rgba(0x101b2c, 205),
+    card_stroke: rgba(0x7dd3fc, 56),
+    nav_fill: rgba(0x070f1c, 215),
+    titlebar: rgb(0x070e1b),
+    shadow: Color32::from_black_alpha(90),
+    scene: Scene {
+        sky: [rgb(0x050a14), rgb(0x0a172b), rgb(0x122e46)],
+        star_strength: 1.0,
+        aurora_strength: 1.0,
+        snow: rgb(0xe6f1ff),
+        rim: rgba(0xb8e8ff, 80),
+        snow_cap: rgba(0xe6f1ff, 140),
+        mountains: [
+            (rgb(0x2a4d6e), rgb(0x122a42)),
+            (rgb(0x193452), rgb(0x0c1d31)),
+            (rgb(0x0d1c2f), rgb(0x07101c)),
+        ],
+        celestial: Celestial::Moon,
+        mist: rgba(0x2a4d6e, 70),
+        trees: rgb(0x06101b),
+    },
+};
+
+pub static DARK: Palette = Palette {
+    dark: true,
+    glass: false,
+    bg: rgb(0x0c0f13),
+    surface: rgb(0x1d232b),
+    surface_hover: rgb(0x28303a),
+    accent: rgb(0xa5cde8),
+    accent_deep: rgb(0x6aa6cc),
+    on_accent: rgb(0x0c0f13),
+    text: rgb(0xe4e8ed),
+    muted: rgb(0x8a95a2),
+    warn: rgb(0xf2b84b),
+    error: rgb(0xf08080),
+    card_fill: rgba(0x151a20, 220),
+    card_stroke: rgba(0xa5cde8, 34),
+    nav_fill: rgba(0x0a0c10, 230),
+    titlebar: rgb(0x0a0c10),
+    shadow: Color32::from_black_alpha(110),
+    scene: Scene {
+        sky: [rgb(0x06080b), rgb(0x0d1117), rgb(0x161d26)],
+        star_strength: 0.7,
+        aurora_strength: 0.35,
+        snow: rgb(0xd5dce4),
+        rim: rgba(0xc8d6e3, 50),
+        snow_cap: rgba(0xcfd8e2, 90),
+        mountains: [
+            (rgb(0x2a323d), rgb(0x161b22)),
+            (rgb(0x1d232b), rgb(0x101419)),
+            (rgb(0x11151a), rgb(0x0a0c0f)),
+        ],
+        celestial: Celestial::Moon,
+        mist: rgba(0x2a323d, 70),
+        trees: rgb(0x08090c),
+    },
+};
+
+pub static LIGHT: Palette = Palette {
+    dark: false,
+    glass: false,
+    bg: rgb(0xeef5fb),
+    surface: rgb(0xdbe8f4),
+    surface_hover: rgb(0xc8dcee),
+    accent: rgb(0x0284c7),
+    accent_deep: rgb(0x0369a1),
+    on_accent: rgb(0xffffff),
+    text: rgb(0x0f2436),
+    muted: rgb(0x587086),
+    warn: rgb(0xb45309),
+    error: rgb(0xdc2626),
+    card_fill: rgba(0xffffff, 215),
+    card_stroke: rgba(0x0284c7, 40),
+    nav_fill: rgba(0xf5faff, 225),
+    titlebar: rgb(0xe6f2fc),
+    shadow: rgba(0x1e3a5f, 40),
+    scene: Scene {
+        sky: [rgb(0x7cc4ee), rgb(0xcde8f9), rgb(0xf4fbff)],
+        star_strength: 0.0,
+        aurora_strength: 0.0,
+        snow: rgb(0x8fb8d8),
+        rim: rgba(0x5f9fcf, 110),
+        snow_cap: rgba(0xffffff, 235),
+        mountains: [
+            (rgb(0xb9d6ec), rgb(0x94bbd9)),
+            (rgb(0xd6e8f5), rgb(0xadcce3)),
+            (rgb(0xf7fbfe), rgb(0xd3e5f2)),
+        ],
+        celestial: Celestial::Sun,
+        mist: rgba(0xffffff, 110),
+        trees: rgb(0x4d7a99),
+    },
+};
+
+/// Aurora's night seen through frosted glass: cards and the sidebar blur what's behind them and
+/// tint it only lightly; buttons are glass too.
+pub static GLASS: Palette = Palette {
+    dark: true,
+    glass: true,
+    bg: rgb(0x0b1320),
+    surface: rgba(0xc8e6ff, 30),
+    surface_hover: rgba(0xc8e6ff, 52),
+    accent: rgb(0x8be0ff),
+    accent_deep: rgb(0x3cc4f5),
+    on_accent: rgb(0x08111d),
+    text: rgb(0xf2f8ff),
+    muted: rgb(0xa9c0da),
+    warn: rgb(0xfbbf24),
+    error: rgb(0xf87171),
+    card_fill: rgba(0x0d1a2c, 96),
+    card_stroke: rgba(0xd8efff, 58),
+    nav_fill: rgba(0x08111f, 110),
+    titlebar: rgb(0x0a1424),
+    shadow: Color32::from_black_alpha(70),
+    scene: Scene {
+        sky: [rgb(0x050a16), rgb(0x0b1a33), rgb(0x16385a)],
+        star_strength: 1.0,
+        aurora_strength: 1.25,
+        snow: rgb(0xe6f1ff),
+        rim: rgba(0xb8e8ff, 90),
+        snow_cap: rgba(0xe6f1ff, 150),
+        mountains: [
+            (rgb(0x2d5478), rgb(0x132c46)),
+            (rgb(0x1b375a), rgb(0x0d1f35)),
+            (rgb(0x0e1e33), rgb(0x07111e)),
+        ],
+        celestial: Celestial::Moon,
+        mist: rgba(0x3a6a96, 70),
+        trees: rgb(0x06101b),
+    },
+};
+
+pub fn palette(mode: ThemeMode) -> &'static Palette {
+    match mode {
+        ThemeMode::Default => &DEFAULT,
+        ThemeMode::Dark => &DARK,
+        ThemeMode::Light => &LIGHT,
+        ThemeMode::Glass => &GLASS,
+    }
+}
+
+const RADIUS: u8 = 6;
+const SMALL_TEXT: f32 = 12.0;
+const BODY_TEXT: f32 = 13.5;
+
+pub fn apply(ctx: &egui::Context, p: &Palette) {
+    let (theme, mut v) = if p.dark {
+        (Theme::Dark, egui::Visuals::dark())
+    } else {
+        (Theme::Light, egui::Visuals::light())
+    };
+    ctx.set_theme(theme);
+    v.override_text_color = Some(p.text);
+    v.panel_fill = p.bg;
+    // Menus, dropdowns and tooltips (egui's popups) sit over the scenery like dialogs do.
+    v.window_fill = dialog_fill(p);
+    v.extreme_bg_color = if p.dark {
+        p.bg.gamma_multiply(0.7)
+    } else {
+        rgb(0xffffff)
+    };
+    v.faint_bg_color = p.surface;
+    v.hyperlink_color = p.accent;
+    v.warn_fg_color = p.warn;
+    v.error_fg_color = p.error;
+    v.selection.bg_fill = p.accent_deep.gamma_multiply(0.45);
+    v.selection.stroke = Stroke::new(1.0, p.accent);
+    v.window_stroke = Stroke::new(1.0, p.surface_hover);
+
+    let radius = CornerRadius::same(RADIUS);
+    let w = &mut v.widgets;
+    for (state, fill) in [
+        (&mut w.inactive, p.surface),
+        (&mut w.hovered, p.surface_hover),
+        (&mut w.active, p.accent_deep.gamma_multiply(0.6)),
+        (&mut w.open, p.surface_hover),
+    ] {
+        state.bg_fill = fill;
+        state.weak_bg_fill = fill;
+        state.corner_radius = radius;
+    }
+    w.noninteractive.bg_fill = p.surface;
+    w.noninteractive.weak_bg_fill = p.surface;
+    w.noninteractive.bg_stroke = Stroke::new(1.0, p.surface);
+    w.noninteractive.corner_radius = radius;
+    w.hovered.bg_stroke = Stroke::new(1.0, p.accent.gamma_multiply(0.6));
+
+    ctx.set_visuals_of(theme, v);
+    ctx.style_mut_of(theme, |style| {
+        style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        style.spacing.button_padding = egui::vec2(12.0, 6.0);
+        // egui's small text (9 px) is too hard to read for notes and hints.
+        if let Some(small) = style.text_styles.get_mut(&egui::TextStyle::Small) {
+            small.size = SMALL_TEXT;
+        }
+        if let Some(body) = style.text_styles.get_mut(&egui::TextStyle::Body) {
+            body.size = BODY_TEXT;
+        }
+    });
+}
+
+/// A dialog's (and a popup's) background. Glass's see-through surface reads poorly over the aurora once a
+/// dialog's text sits on it (dialogs aren't blurred like the panes), so there it's the night's
+/// own color, nearly solid; the other themes use their surface as it is.
+pub fn dialog_fill(p: &Palette) -> Color32 {
+    if p.glass {
+        Color32::from_rgba_unmultiplied(0x0e, 0x1a, 0x2c, DIALOG_GLASS_ALPHA)
+    } else {
+        p.surface
+    }
+}
+
+/// How solid Glass dialogs are (of 255).
+const DIALOG_GLASS_ALPHA: u8 = 242;
+
+/// Frosted-ice card: translucent so the scenery shows through, with a
+/// faint edge and a soft drop shadow.
+pub fn card(p: &Palette) -> egui::Frame {
+    egui::Frame::new()
+        .fill(p.card_fill)
+        .stroke(Stroke::new(1.0, p.card_stroke))
+        .corner_radius(CornerRadius::same(12))
+        .inner_margin(16.0)
+        .shadow(egui::Shadow {
+            offset: [0, 6],
+            blur: 18,
+            spread: 0,
+            color: p.shadow,
+        })
+}
+
+/// Side navigation: frosted glass with a faint right edge.
+pub fn nav_frame(p: &Palette) -> egui::Frame {
+    egui::Frame::new().fill(p.nav_fill).inner_margin(12.0)
+}
+
+/// Solid strip for the update banner and notices.
+pub fn strip(p: &Palette) -> egui::Frame {
+    egui::Frame::new().fill(p.surface).inner_margin(8.0)
+}

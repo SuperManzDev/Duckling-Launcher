@@ -1,27 +1,27 @@
-# Command line (`arctic`)
+# Command line (`duckling`)
 
-`arctic.exe` is a headless companion to the launcher. It uses the same data folder,
+`duckling.exe` is a headless companion to the launcher. It uses the same data folder,
 accounts, settings and downloads as the GUI, so you can script installs and launches,
 make desktop shortcuts, or run Minecraft on a machine you only reach over SSH.
 
 ```powershell
-arctic launch                       # latest release as the active account
-arctic launch 1.21.4
-arctic launch latest --account Alex --memory 6G --wait
-arctic launch --instance fabric     # an instance, with its own version and mods
-arctic open --launch 1.20.1         # open the launcher window and start 1.20.1
+duckling launch                       # latest release as the active account
+duckling launch 1.21.4
+duckling launch latest --account Alex --memory 6G --wait
+duckling launch --instance fabric     # an instance, with its own version and mods
+duckling open --launch 1.20.1         # open the launcher window and start 1.20.1
 ```
 
-Download `arctic-windows-x64.exe` or `arctic-linux-x64` from the
-[latest release](https://github.com/brksfrb/arctic-launcher/releases/latest) and put it on
-your `PATH` as `arctic`.
+Download `duckling-windows-x64.exe` or `duckling-linux-x64` from the
+[latest release](https://github.com/SuperManzDev/Duckling-Launcher/releases/latest) and put it on
+your `PATH` as `duckling`.
 
 ## Global options
 
 | Option | Meaning |
 |---|---|
-| `-p, --profile <NAME>` | Work in this profile instead of the active one (also `ARCTIC_PROFILE`) |
-| `--data-dir <DIR>` | Use another data folder (also `ARCTIC_DATA_DIR`) |
+| `-p, --profile <NAME>` | Work in this profile instead of the active one (also `DUCKLING_PROFILE`) |
+| `--data-dir <DIR>` | Use another data folder (also `DUCKLING_DATA_DIR`) |
 | `--json` | Machine-readable output: one JSON object per line on stdout |
 | `-v, --verbose` | Print launcher log messages to stderr |
 

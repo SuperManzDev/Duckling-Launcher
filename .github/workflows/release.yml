@@ -50,26 +50,26 @@ jobs:
 
       - name: Build (Linux)
         env:
-          # Arctic's own Azure client ID (see docs/microsoft-auth.md). Minecraft
+          # Duckling's own Azure client ID (see docs/microsoft-auth.md). Minecraft
           # sign-in works once Mojang has approved it; no rebuild needed then.
           ARCTIC_MSA_CLIENT_ID: ${{ secrets.ARCTIC_MSA_CLIENT_ID }}
-        run: cargo build --release -p arctic-app -p arctic-cli
+        run: cargo build --release -p duckling-app -p duckling-cli
 
       - name: Build (Windows)
         env:
           ARCTIC_MSA_CLIENT_ID: ${{ secrets.ARCTIC_MSA_CLIENT_ID }}
         run: |
-          cargo xwin build --release --target x86_64-pc-windows-msvc -p arctic-app -p arctic-cli 2>&1 | tee xwin.log
+          cargo xwin build --release --target x86_64-pc-windows-msvc -p duckling-app -p duckling-cli 2>&1 | tee xwin.log
           # build.rs only warns when the icon can't go in; a release must have it.
           if grep -q "could not embed exe icon" xwin.log; then echo "the Windows exe has no icon"; exit 1; fi
 
       - name: Stage assets
         run: |
           mkdir -p dist/windows dist/linux
-          cp "$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/arctic-launcher.exe" dist/windows/arctic-launcher-windows-x64.exe
-          cp "$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/arctic.exe" dist/windows/arctic-windows-x64.exe
-          cp "$CARGO_TARGET_DIR/release/arctic-launcher" dist/linux/arctic-launcher-linux-x64
-          cp "$CARGO_TARGET_DIR/release/arctic" dist/linux/arctic-linux-x64
+          cp "$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/duckling-launcher.exe" dist/windows/duckling-launcher-windows-x64.exe
+          cp "$CARGO_TARGET_DIR/x86_64-pc-windows-msvc/release/duckling.exe" dist/windows/duckling-windows-x64.exe
+          cp "$CARGO_TARGET_DIR/release/duckling-launcher" dist/linux/duckling-launcher-linux-x64
+          cp "$CARGO_TARGET_DIR/release/duckling" dist/linux/duckling-linux-x64
 
       - uses: actions/upload-artifact@v4
         with:
@@ -103,15 +103,15 @@ jobs:
         env:
           ARCTIC_MSA_CLIENT_ID: ${{ secrets.ARCTIC_MSA_CLIENT_ID }}
         run: |
-          cargo build --release -p arctic-app -p arctic-cli --target aarch64-apple-darwin
-          cargo build --release -p arctic-app -p arctic-cli --target x86_64-apple-darwin
+          cargo build --release -p duckling-app -p duckling-cli --target aarch64-apple-darwin
+          cargo build --release -p duckling-app -p duckling-cli --target x86_64-apple-darwin
 
       - name: Package
         run: |
           version=$(grep -m1 '^version = ' Cargo.toml | cut -d '"' -f2)
           bash packaging/macos/make-app.sh "$version"
           mkdir mac-dist
-          cp dist/arctic-launcher-macos.zip dist/arctic-launcher-macos dist/arctic-macos mac-dist/
+          cp dist/duckling-launcher-macos.zip dist/duckling-launcher-macos dist/duckling-macos mac-dist/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -158,7 +158,7 @@ jobs:
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
           # A draft: the Windows files are signed on the maintainer's PC (Certum's cloud certificate),
           # which then publishes it: packaging/windows/sign-release.ps1.
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Arctic Launcher $GITHUB_REF_NAME" --notes-file notes.md --generate-notes --draft $prerelease
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Duckling Launcher $GITHUB_REF_NAME" --notes-file notes.md --generate-notes --draft $prerelease
 
   # The Mac app, into the release made above (draft or already published): its checksums join
   # the file and the notes' table.
@@ -176,10 +176,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          chmod +x mac/arctic-launcher-macos mac/arctic-macos
+          chmod +x mac/duckling-launcher-macos mac/duckling-macos
           gh release download "$GITHUB_REF_NAME" --pattern SHA256SUMS.txt --dir current --clobber
           (cd mac && sha256sum -- *) > mac.sums
-          { grep -v -E '  \*?(arctic-launcher-macos|arctic-launcher-macos\.zip|arctic-macos)$' current/SHA256SUMS.txt || true; cat mac.sums; } \
+          { grep -v -E '  \*?(duckling-launcher-macos|duckling-launcher-macos\.zip|duckling-macos)$' current/SHA256SUMS.txt || true; cat mac.sums; } \
             | sort -k2 > SHA256SUMS.txt
           gh release upload "$GITHUB_REF_NAME" mac/* SHA256SUMS.txt --clobber
           # The notes' checksum table, rebuilt from the file (as sign-release.ps1 does).

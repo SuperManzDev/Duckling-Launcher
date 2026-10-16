@@ -1,0 +1,26 @@
+[package]
+name = "duckling-cli"
+description = "Duckling Launcher command line interface (headless)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+duckling-core = { path = "../duckling-core" }
+duckling-share = { path = "../duckling-share" }
+clap = { version = "4.6.7", features = ["derive", "env"] }
+log = "0.4.34"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+[features]
+default = ["offline-accounts"]
+# Offline (username-only) accounts (on by default; `--no-default-features` leaves them out).
+offline-accounts = ["duckling-core/offline-accounts"]
+
+[[bin]]
+name = "duckling"
+path = "src/main.rs"

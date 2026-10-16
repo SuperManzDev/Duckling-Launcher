@@ -1,14 +1,14 @@
 [workspace]
 resolver = "3"
-members = ["crates/arctic-core", "crates/arctic-ping", "crates/arctic-voice", "crates/arctic-app", "crates/arctic-cli", "crates/arctic-share", "crates/arctic-cosmetics", "crates/arctic-mesh"]
+members = ["crates/duckling-core", "crates/duckling-ping", "crates/duckling-voice", "crates/duckling-app", "crates/duckling-cli", "crates/duckling-share", "crates/duckling-cosmetics", "crates/duckling-mesh"]
 
 [workspace.package]
 version = "0.4.9"
 edition = "2024"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/brksfrb/arctic-launcher"
-homepage = "https://arcticlauncher.com"
-authors = ["Arctic Launcher contributors"]
+repository = "https://github.com/SuperManzDev/Duckling-Launcher"
+homepage = "https://github.com/SuperManzDev/Duckling-Launcher"
+authors = ["Duckling Launcher contributors"]
 
 # Dependencies (zip, inflate, JSON) optimized even in dev builds: reading
 # thousands of mod jars when importing is otherwise very slow.

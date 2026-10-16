@@ -1,0 +1,214 @@
+﻿//! `arctic launch`.
+
+use std::sync::mpsc;
+
+use duckling_core::ProgressInfo;
+#[cfg(feature = "offline-accounts")]
+#[cfg(feature = "offline-accounts")]
+use duckling_core::auth::offline;
+use duckling_core::auth::{self, Account, AccountStore};
+use duckling_core::launch::{self, GameEvent, LaunchRequest, QuickPlay};
+use duckling_core::settings::Settings;
+use duckling_core::versions::VersionManifest;
+use duckling_core::{Error, Result, instances};
+use serde_json::json;
+
+use super::{Ctx, fresh_account, resolve_version};
+use crate::cli::LaunchArgs;
+use crate::output::parse_memory;
+
+pub fn run(ctx: &Ctx, args: &LaunchArgs) -> Result<i32> {
+    let settings = apply_overrides(Settings::load(&ctx.dirs)?, args)?;
+    let manifest = VersionManifest::fetch(&ctx.dirs)?;
+    let instance = match &args.instance {
+        Some(query) => instances::find(&ctx.dirs, query)?,
+        None => instances::load_default(&ctx.dirs)?,
+    };
+    // Custom instances pin their Minecraft version.
+    let version = instance.version.as_deref().unwrap_or(&args.version);
+    let entry = resolve_version(&manifest, version)?;
+    let account = pick_account(ctx, args)?;
+
+    let progress = |p: ProgressInfo| ctx.out.progress(p);
+    // Staying attached keeps this process alive: it can switch accounts
+    // for the game too.
+    let bridge = args
+        .wait
+        .then(|| duckling_core::bridge::start(CliAccounts(ctx.dirs.clone())).ok())
+        .flatten();
+    let req = LaunchRequest {
+        dirs: &ctx.dirs,
+        version: &entry,
+        instance: &instance,
+        account: &account,
+        settings: &settings,
+        bridge: bridge.as_ref(),
+        copy: 0,
+        quick_play: quick_play(args)?,
+    };
+    let plan = launch::prepare(&req, &progress)?;
+    ctx.out.end_progress();
+
+    if args.dry_run {
+        ctx.out.emit(
+            json!({"event": "dry_run", "version": entry.id, "command": plan.redacted_command()}),
+            || plan.redacted_command(),
+        );
+        return Ok(0);
+    }
+    if !args.wait {
+        let pid = launch::spawn_detached(&plan)?;
+        ctx.out.emit(
+            json!({"event": "launched", "version": entry.id, "account": account.username, "pid": pid, "log": plan.log_file}),
+            || format!("Launched Minecraft {} as {} (pid {pid}). Log: {}", entry.id, account.username, plan.log_file.display()),
+        );
+        return Ok(0);
+    }
+    let code = wait_for_game(ctx, &plan, &entry.id, &account.username);
+    // What the game changed goes to the profile's other instances.
+    if let Err(e) = duckling_core::shared::sync(&ctx.dirs, settings.shared, None) {
+        log::warn!("sharing between instances: {e}");
+    }
+    code
+}
+
+fn quick_play(args: &LaunchArgs) -> Result<Option<QuickPlay>> {
+    if let Some(address) = &args.server {
+        if duckling_core::servers::Address::parse(address).is_none() {
+            return Err(Error::Other(format!(
+                "\"{address}\" isn't a server address"
+            )));
+        }
+        return Ok(Some(QuickPlay::Server(address.trim().to_owned())));
+    }
+    if let Some(file) = &args.replay {
+        let file = std::path::absolute(file).map_err(|e| Error::Other(e.to_string()))?;
+        if !file.is_file() {
+            return Err(Error::Other(format!("no replay at {}", file.display())));
+        }
+        return Ok(Some(QuickPlay::Replay(file)));
+    }
+    Ok(args.world.clone().map(QuickPlay::World))
+}
+
+/// The CLI's accounts for the in-game switcher: read from disk each time,
+/// refreshed and saved like `arctic launch` does.
+struct CliAccounts(duckling_core::storage::DataDirs);
+
+impl duckling_core::bridge::Accounts for CliAccounts {
+    fn list(&self) -> Vec<duckling_core::bridge::AccountEntry> {
+        let store = AccountStore::load(&self.0).unwrap_or_default();
+        store
+            .accounts
+            .iter()
+            .map(|a| duckling_core::bridge::AccountEntry {
+                id: a.id.clone(),
+                name: a.username.clone(),
+                uuid: a.uuid.clone(),
+                microsoft: a.is_microsoft(),
+                active: store.active.as_deref() == Some(a.id.as_str()),
+            })
+            .collect()
+    }
+
+    fn session(&self, id: &str) -> Result<duckling_core::bridge::SessionGrant> {
+        let mut store = AccountStore::load(&self.0)?;
+        let account = store
+            .accounts
+            .iter()
+            .find(|a| a.id == id)
+            .cloned()
+            .ok_or_else(|| Error::Other("no such account".into()))?;
+        let (fresh, changed) = auth::ensure_fresh(&self.0, &account)?;
+        if changed {
+            store.upsert(fresh.clone());
+            store.save(&self.0)?;
+        }
+        let base = duckling_core::cosmetics::base_url();
+        Ok(duckling_core::bridge::SessionGrant {
+            identity: fresh.identity(),
+            arctic_token: duckling_core::cosmetics::token_for(&self.0, &base, &fresh).ok(),
+        })
+    }
+}
+
+/// Stay attached: stream the parsed game log, return the game's exit code.
+fn wait_for_game(
+    ctx: &Ctx,
+    plan: &launch::LaunchPlan,
+    version: &str,
+    username: &str,
+) -> Result<i32> {
+    let (tx, rx) = mpsc::channel();
+    let game = launch::spawn(plan, move |event| {
+        let _ = tx.send(event);
+    })?;
+    ctx.out.emit(
+        json!({"event": "launched", "version": version, "account": username, "pid": game.pid()}),
+        || {
+            format!(
+                "Launched Minecraft {version} as {username} (pid {})",
+                game.pid()
+            )
+        },
+    );
+    for event in rx {
+        match event {
+            GameEvent::Output(lines) => {
+                for line in lines {
+                    ctx.out.emit(
+                        json!({"event": "log", "level": format!("{:?}", line.level).to_lowercase(), "text": line.text}),
+                        || line.text.clone(),
+                    );
+                }
+            }
+            GameEvent::WindowReady => ctx.out.emit(json!({"event": "window_ready"}), || {
+                "── Game window is up ──".into()
+            }),
+            GameEvent::Exited { code } => {
+                ctx.out.emit(json!({"event": "exited", "code": code}), || {
+                    format!(
+                        "Minecraft exited ({})",
+                        code.map_or("killed".into(), |c| c.to_string())
+                    )
+                });
+                return Ok(code.unwrap_or(1));
+            }
+        }
+    }
+    Ok(1)
+}
+
+fn apply_overrides(settings: Settings, args: &LaunchArgs) -> Result<Settings> {
+    let max_memory_mb = match &args.memory {
+        Some(text) => parse_memory(text)
+            .ok_or_else(|| Error::Other(format!("invalid --memory '{text}' (try 4G or 4096M)")))?,
+        None => settings.max_memory_mb,
+    };
+    Ok(Settings {
+        max_memory_mb,
+        window_width: args.width.unwrap_or(settings.window_width),
+        window_height: args.height.unwrap_or(settings.window_height),
+        fullscreen: args.fullscreen || settings.fullscreen,
+        game_maximized: args.maximized || settings.game_maximized,
+        java_override: args.java.clone().or(settings.java_override.clone()),
+        ..settings
+    }
+    .sanitized())
+}
+
+/// `--offline NAME`, `--account QUERY`, or the active account. Microsoft
+/// sessions are refreshed (and saved) when needed.
+fn pick_account(ctx: &Ctx, args: &LaunchArgs) -> Result<Account> {
+    #[cfg(feature = "offline-accounts")]
+    if let Some(name) = &args.offline {
+        let account = offline::create(name)?;
+        if args.save {
+            let mut store = AccountStore::load(&ctx.dirs)?;
+            store.upsert(account.clone());
+            store.save(&ctx.dirs)?;
+        }
+        return Ok(account);
+    }
+    fresh_account(ctx, args.account.as_deref())
+}

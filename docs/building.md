@@ -12,28 +12,28 @@
 ## Build
 
 ```sh
-git clone https://github.com/brksfrb/arctic-launcher
-cd arctic-launcher
-cargo build --release -p arctic-app -p arctic-cli
+git clone https://github.com/SuperManzDev/Duckling-Launcher
+cd Duckling-Launcher
+cargo build --release -p duckling-app -p duckling-cli
 ```
 
 This produces:
 
 | Binary | Windows | Linux |
 |---|---|---|
-| Launcher | `target/release/arctic-launcher.exe` | `target/release/arctic-launcher` |
-| Command line | `target/release/arctic.exe` | `target/release/arctic` |
+| Launcher | `target/release/duckling-launcher.exe` | `target/release/duckling-launcher` |
+| Command line | `target/release/duckling.exe` | `target/release/duckling` |
 
-Run the launcher directly with `cargo run --release -p arctic-app`.
+Run the launcher directly with `cargo run --release -p duckling-app`.
 
 **macOS app:** build both kinds of Mac, then make the universal, ad-hoc signed
-`Arctic Launcher.app` (zipped in `dist/`):
+`Duckling Launcher.app` (zipped in `dist/`):
 
 ```sh
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
-cargo build --release -p arctic-app -p arctic-cli --target aarch64-apple-darwin
-cargo build --release -p arctic-app -p arctic-cli --target x86_64-apple-darwin
-packaging/macos/make-app.sh 0.2.0
+cargo build --release -p duckling-app -p duckling-cli --target aarch64-apple-darwin
+cargo build --release -p duckling-app -p duckling-cli --target x86_64-apple-darwin
+packaging/macos/make-app.sh 0.4.9
 ```
 
 On Apple Silicon, Minecraft versions before 1.19 (whose graphics libraries have no arm64 build)

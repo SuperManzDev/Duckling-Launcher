@@ -1,0 +1,597 @@
+﻿//! Games started from the launcher. Several can run at once, one per
+//! instance (two copies of one instance would fight over its worlds and
+//! files); each keeps its own log, can be stopped on its own, and gets its
+//! crash explained when it ends badly.
+
+use std::collections::VecDeque;
+use std::path::PathBuf;
+use std::time::{Instant, SystemTime};
+
+use duckling_core::crash::{self, Diagnosis};
+use duckling_core::launch::logparse::{Level, LogLine};
+use duckling_core::launch::startup::Stage;
+use duckling_core::launch::{GameEvent, GameHandle};
+use duckling_core::settings::{CrashReports, GameStartAction};
+use eframe::egui;
+
+use crate::app::{DucklingApp, LogSource};
+use crate::motion::RateMeter;
+use crate::tasks::{Event, LaunchId, ProgressSnapshot, Tasks};
+use crate::toasts::{Kind, ToastAction};
+
+/// Game log lines kept in memory per run (older ones are dropped).
+const LOG_LINES: usize = 20_000;
+/// Log lines searched for a crash cause (the end is where it is).
+const DIAGNOSE_LINES: usize = 4000;
+
+pub enum RunState {
+    Preparing {
+        progress: ProgressSnapshot,
+        meter: RateMeter,
+    },
+    /// Process started, waiting for the game window.
+    Starting {
+        game: GameHandle,
+        /// What the game's log says it's doing.
+        stage: Stage,
+        since: Instant,
+    },
+    Running {
+        game: GameHandle,
+    },
+    /// Finished; its log stays readable until the instance runs again.
+    Ended,
+}
+
+pub struct Run {
+    pub id: LaunchId,
+    pub instance_id: String,
+    /// The Minecraft version it runs (Vanilla can run several at once).
+    pub version: String,
+    /// "Vanilla · 26.3", for lists and the Logs tab.
+    pub title: String,
+    pub state: RunState,
+    pub log: VecDeque<LogLine>,
+    /// Bumped whenever `log` changes (for the Logs tab cache).
+    pub log_rev: u64,
+    pub game_dir: PathBuf,
+    started: SystemTime,
+    /// Game events that overtook their `Launched` event.
+    early: Vec<GameEvent>,
+    /// The crash, ready to send if the player agrees.
+    crash_report: Option<crash::Report>,
+    /// How Java was started (flags, classpath files), for the crash report.
+    pub java: Option<String>,
+}
+
+impl Run {
+    pub fn is_active(&self) -> bool {
+        !matches!(self.state, RunState::Ended)
+    }
+
+    /// The game process, once it's started and until it exits.
+    pub fn game(&self) -> Option<&GameHandle> {
+        match &self.state {
+            RunState::Starting { game, .. } | RunState::Running { game } => Some(game),
+            _ => None,
+        }
+    }
+
+    pub fn clear_log(&mut self) {
+        self.log.clear();
+        self.log_rev += 1;
+    }
+
+    pub fn push_log(&mut self, lines: impl IntoIterator<Item = LogLine>) {
+        self.log_rev += 1;
+        self.log.extend(lines);
+        let excess = self.log.len().saturating_sub(LOG_LINES);
+        self.log.drain(..excess);
+    }
+
+    /// Minecraft's own shutdown watchdog fired: quitting took too long
+    /// (typically network threads hanging without internet).
+    fn shutdown_watchdog_fired(&self) -> bool {
+        self.log
+            .iter()
+            .rev()
+            .take(400)
+            .any(|l| l.text.contains("Client shutdown from post-main"))
+    }
+
+    /// The crash as a report, from the game log's end and the crash report it wrote.
+    fn crash_report(&self, title: &str) -> crash::Report {
+        let lines: Vec<&str> = self.log.iter().map(|l| l.text.as_str()).collect();
+        let written = newest_crash_report(&self.game_dir, self.started);
+        crash::Report::build(
+            &self.version,
+            "",
+            title,
+            &lines,
+            written.as_deref(),
+            self.java.as_deref(),
+        )
+    }
+
+    /// Memory a big pack was started with, if it was too little for it: the warning to show.
+    pub fn memory_warning(&self) -> Option<String> {
+        let given = crash::max_memory_mb(self.java.as_deref()?)?;
+        let mods = duckling_core::launch::mod_count(&self.game_dir.join("mods"));
+        crash::memory_warning(given, mods, duckling_core::system::total_memory_mb())
+    }
+
+    /// Why the game crashed, from its log and the crash report it wrote.
+    fn diagnose(&self) -> Option<Diagnosis> {
+        let skip = self.log.len().saturating_sub(DIAGNOSE_LINES);
+        let mut text: String = self
+            .log
+            .iter()
+            .skip(skip)
+            .map(|l| l.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        if let Some(report) = newest_crash_report(&self.game_dir, self.started) {
+            text.push('\n');
+            text.push_str(&report);
+        }
+        crash::diagnose(&text)
+    }
+}
+
+/// The crash report Minecraft wrote after `since`, if any.
+fn newest_crash_report(game_dir: &std::path::Path, since: SystemTime) -> Option<String> {
+    let entries = std::fs::read_dir(game_dir.join("crash-reports")).ok()?;
+    let newest = entries
+        .flatten()
+        .filter_map(|e| {
+            let modified = e.metadata().ok()?.modified().ok()?;
+            (modified >= since).then(|| (modified, e.path()))
+        })
+        .max_by_key(|(modified, _)| *modified)?;
+    std::fs::read_to_string(newest.1).ok()
+}
+
+#[derive(Default)]
+pub struct Runs {
+    pub list: Vec<Run>,
+    next_id: LaunchId,
+}
+
+impl Runs {
+    /// Start tracking a launch; an older, finished run of the instance goes.
+    pub fn start(
+        &mut self,
+        instance_id: &str,
+        version: &str,
+        title: String,
+        game_dir: PathBuf,
+    ) -> LaunchId {
+        self.next_id += 1;
+        self.list
+            .retain(|r| r.is_active() || r.instance_id != instance_id);
+        self.list.push(Run {
+            id: self.next_id,
+            instance_id: instance_id.to_owned(),
+            version: version.to_owned(),
+            title,
+            state: RunState::Preparing {
+                progress: ProgressSnapshot {
+                    stage: "Starting".into(),
+                    ..ProgressSnapshot::default()
+                },
+                meter: RateMeter::default(),
+            },
+            log: VecDeque::new(),
+            log_rev: 0,
+            game_dir,
+            started: SystemTime::now(),
+            early: Vec::new(),
+            crash_report: None,
+            java: None,
+        });
+        self.next_id
+    }
+
+    pub fn get(&self, id: LaunchId) -> Option<&Run> {
+        self.list.iter().find(|r| r.id == id)
+    }
+
+    pub fn get_mut(&mut self, id: LaunchId) -> Option<&mut Run> {
+        self.list.iter_mut().find(|r| r.id == id)
+    }
+
+    /// The latest run of an instance (active or finished).
+    pub fn for_instance(&self, instance_id: &str) -> Option<&Run> {
+        self.list
+            .iter()
+            .rev()
+            .find(|r| r.instance_id == instance_id)
+    }
+
+    /// The newest running copy of an instance, of `version` when given.
+    pub fn active_for(&self, instance_id: &str, version: Option<&str>) -> Option<&Run> {
+        self.list.iter().rev().find(|r| {
+            r.is_active() && r.instance_id == instance_id && version.is_none_or(|v| r.version == v)
+        })
+    }
+
+    pub fn active(&self) -> impl Iterator<Item = &Run> {
+        self.list.iter().filter(|r| r.is_active())
+    }
+
+    pub fn any_active(&self) -> bool {
+        self.active().next().is_some()
+    }
+
+    /// A game process is up (not just preparing).
+    pub fn any_game(&self) -> bool {
+        self.list.iter().any(|r| r.game().is_some())
+    }
+
+    pub fn instance_active(&self, instance_id: &str) -> bool {
+        self.for_instance(instance_id).is_some_and(Run::is_active)
+    }
+
+    /// The newest run, for "View logs" defaults.
+    pub fn latest(&self) -> Option<&Run> {
+        self.list.last()
+    }
+
+    /// Forget every run (profile switch; only allowed when none is active).
+    pub fn clear(&mut self) {
+        self.list.clear();
+    }
+}
+
+impl DucklingApp {
+    pub(crate) fn on_launch_progress(
+        &mut self,
+        id: LaunchId,
+        snapshot: ProgressSnapshot,
+        now: f64,
+    ) {
+        if let Some(Run {
+            state: RunState::Preparing { progress, meter },
+            ..
+        }) = self.runs.get_mut(id)
+        {
+            meter.push(now, snapshot.bytes_done);
+            *progress = snapshot;
+        }
+    }
+
+    pub(crate) fn on_launched(
+        &mut self,
+        id: LaunchId,
+        result: Result<GameHandle, String>,
+        ctx: &egui::Context,
+    ) {
+        if self.runs.get(id).is_none() {
+            return;
+        }
+        match result {
+            Ok(game) => {
+                let Some(run) = self.runs.get_mut(id) else {
+                    return;
+                };
+                run.state = RunState::Starting {
+                    game,
+                    stage: Stage::Java,
+                    since: Instant::now(),
+                };
+                let early = std::mem::take(&mut run.early);
+                // Replay events from a game that was faster than our bookkeeping.
+                for event in early {
+                    self.on_game_event(id, event, ctx);
+                }
+            }
+            Err(e) => {
+                if let Some(run) = self.runs.get_mut(id) {
+                    run.state = RunState::Ended;
+                }
+                self.toasts.push(Kind::Error, "Launch failed", e);
+            }
+        }
+    }
+
+    pub(crate) fn on_game_event(&mut self, id: LaunchId, event: GameEvent, ctx: &egui::Context) {
+        let Some(run) = self.runs.get_mut(id) else {
+            return;
+        };
+        if matches!(run.state, RunState::Preparing { .. }) {
+            run.early.push(event);
+            return;
+        }
+        match event {
+            GameEvent::WindowReady => {
+                if let RunState::Starting { game, .. } =
+                    std::mem::replace(&mut run.state, RunState::Ended)
+                {
+                    run.state = RunState::Running { game };
+                }
+                if self.settings.on_game_start == GameStartAction::Minimize
+                    && !self.minimized_for_game
+                {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                    self.minimized_for_game = true;
+                    crate::trim::now(ctx);
+                }
+            }
+            GameEvent::Output(lines) => {
+                if let RunState::Starting { stage, .. } = &mut run.state {
+                    *stage = lines.iter().fold(*stage, |s, l| s.advance(&l.text));
+                }
+                run.push_log(lines);
+            }
+            GameEvent::Exited { code } => {
+                run.state = RunState::Ended;
+                // What the game changed goes to the profile's other instances.
+                let (dirs, shared) = (self.dirs.clone(), self.settings.shared);
+                std::thread::spawn(move || {
+                    if let Err(e) = duckling_core::shared::sync(&dirs, shared, None) {
+                        log::warn!("sharing between instances: {e}");
+                    }
+                });
+                // The game threw its unfinished recording away itself unless it crashed or
+                // was killed; either way nothing is writing it now (unless another copy of
+                // the instance still runs in the same folder).
+                let game_dir = run.game_dir.clone();
+                if !self
+                    .runs
+                    .list
+                    .iter()
+                    .any(|other| other.id != id && other.is_active() && other.game_dir == game_dir)
+                {
+                    std::thread::spawn(move || {
+                        duckling_core::replays::clear_temp(&game_dir);
+                    });
+                }
+                let Some(run) = self.runs.get_mut(id) else {
+                    return;
+                };
+                let watchdog = run.shutdown_watchdog_fired();
+                let title = run.title.clone();
+                let diagnosis = matches!(code, Some(c) if c != 0 && !watchdog)
+                    .then(|| run.diagnose())
+                    .flatten();
+                if let Some(d) = &diagnosis {
+                    run.push_log([LogLine {
+                        level: Level::Error,
+                        text: format!("──── Arctic: {} — {} ────", d.title, d.detail),
+                    }]);
+                    if d.repair {
+                        duckling_core::launch::files::request_repair(&self.dirs);
+                        // The loader failed before any mod ran: the next start also goes without the
+                        // client's startup agent, the one thing Arctic adds to the loader's start.
+                        duckling_core::launch::startup_cache::turn_off(&run.game_dir);
+                    }
+                }
+                let crashed = matches!(code, Some(c) if c != 0 && !watchdog);
+                if crashed {
+                    let report =
+                        run.crash_report(diagnosis.as_ref().map_or("", |d| d.title.as_str()));
+                    self.offer_crash_report(id, report);
+                }
+                // Back to the launcher once the last game is closed.
+                if self.minimized_for_game && !self.runs.any_game() {
+                    self.minimized_for_game = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
+                self.report_exit(id, &title, code, watchdog, diagnosis);
+            }
+        }
+    }
+
+    fn report_exit(
+        &mut self,
+        id: LaunchId,
+        title: &str,
+        code: Option<i32>,
+        watchdog: bool,
+        diagnosis: Option<Diagnosis>,
+    ) {
+        match code {
+            Some(0) => {}
+            Some(_) if watchdog => self.toasts.push(
+                Kind::Info,
+                format!("{title} closed"),
+                "It was slow to shut down, which happens without internet.",
+            ),
+            Some(c) => {
+                let (heading, body) = match diagnosis {
+                    Some(d) => (format!("{title} crashed: {}", d.title), d.detail),
+                    None => (
+                        format!("{title} closed unexpectedly"),
+                        format!("Exit code {c}."),
+                    ),
+                };
+                self.toasts.push_with_action(
+                    Kind::Error,
+                    heading,
+                    body,
+                    Some(ToastAction::ShowLogs(id)),
+                );
+            }
+            None => self
+                .toasts
+                .push(Kind::Info, format!("{title} was stopped"), ""),
+        }
+    }
+
+    /// What to do with a crash report, by the player's setting: nothing,
+    /// send it, or ask with a button on a toast.
+    fn offer_crash_report(&mut self, id: LaunchId, report: crash::Report) {
+        match self.settings.crash_reports {
+            CrashReports::Never => {}
+            CrashReports::Always => self.tasks.send_crash_report(report),
+            CrashReports::Ask => {
+                if let Some(run) = self.runs.get_mut(id) {
+                    run.crash_report = Some(report);
+                }
+                self.toasts.push_with_action(
+                    Kind::Info,
+                    "Help fix this crash?",
+                    "Send the log to Arctic. Your name, folders and sign-in details are taken out first.",
+                    Some(ToastAction::SendCrash(id)),
+                );
+            }
+        }
+    }
+
+    /// The player said yes to sending this run's crash report.
+    pub(crate) fn send_crash_report(&mut self, id: LaunchId) {
+        if let Some(report) = self.runs.get_mut(id).and_then(|r| r.crash_report.take()) {
+            self.tasks.send_crash_report(report);
+        }
+    }
+
+    /// Note a line in a run's log (launch banners and the like).
+    pub(crate) fn run_note(&mut self, id: LaunchId, text: String) {
+        if let Some(run) = self.runs.get_mut(id) {
+            run.push_log([LogLine {
+                level: Level::Info,
+                text,
+            }]);
+        }
+    }
+
+    /// Show a run's log in the Logs tab.
+    pub(crate) fn show_run_log(&mut self, id: LaunchId, now: f64) {
+        self.log_source = LogSource::Game(id);
+        self.set_tab(crate::app::Tab::Logs, now);
+    }
+}
+
+impl DucklingApp {
+    /// The proxy covers Minecraft's login services for every game, but server
+    /// connections only through the Arctic Client (Fabric/Quilt and Vanilla
+    /// instances that have it on). Say so when a game that skips it starts.
+    pub(crate) fn warn_if_proxy_misses_servers(
+        &mut self,
+        instance: &duckling_core::instances::Instance,
+        version_id: &str,
+    ) {
+        if duckling_core::proxy::ProxySettings::load(&self.dirs)
+            .active()
+            .is_none()
+        {
+            return;
+        }
+        let forge = matches!(
+            instance.loader.kind(),
+            Some(
+                duckling_core::loaders::LoaderKind::Forge
+                    | duckling_core::loaders::LoaderKind::NeoForge
+            )
+        );
+        if instance.arctic_mod && !forge && duckling_core::arctic_mod::supports(version_id) {
+            return;
+        }
+        self.toasts.push(
+            crate::toasts::Kind::Error,
+            "The proxy won't cover this game's servers",
+            "Only Minecraft's login goes through it. Servers see your real address unless you play with the Arctic Client (Vanilla or Fabric instances).",
+        );
+    }
+}
+
+impl Tasks {
+    /// Send a crash report in the background; says so when it's done.
+    pub fn send_crash_report(&self, report: crash::Report) {
+        self.run(move |t| {
+            let base = duckling_core::cosmetics::base_url();
+            let result = duckling_core::cosmetics::send_crash_report(&base, &report)
+                .map_err(|e| e.to_string());
+            t.send(Event::CrashReportSent(result));
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_small_heap_does_not_hide_a_missing_library_or_disable_repair() {
+        let dir = tempfile::tempdir().unwrap();
+        let mods = dir.path().join("mods");
+        std::fs::create_dir(&mods).unwrap();
+        for n in 0..80 {
+            std::fs::write(mods.join(format!("mod-{n}.jar")), b"").unwrap();
+        }
+        let mut runs = Runs::default();
+        let id = runs.start("pack", "1.21.4", "Pack".into(), dir.path().into());
+        let run = runs.get_mut(id).unwrap();
+        run.java = Some("Java java-runtime-delta, flags: -Xms512M -Xmx1918M".into());
+        run.push_log([LogLine {
+            level: Level::Error,
+            text: "java.lang.NoClassDefFoundError: org/spongepowered/asm/mixin/throwables/MixinError\nCaused by: java.lang.ClassNotFoundException: org.spongepowered.asm.mixin.throwables.MixinError".into(),
+        }]);
+        assert!(run.memory_warning().is_some());
+        let diagnosis = run.diagnose().unwrap();
+        assert_eq!(diagnosis.title, "A game library couldn't be loaded");
+        assert!(diagnosis.repair);
+        run.clear_log();
+        run.push_log([LogLine {
+            level: Level::Error,
+            text: "java.lang.OutOfMemoryError: Java heap space".into(),
+        }]);
+        assert_eq!(run.diagnose().unwrap().title, "Minecraft ran out of memory");
+    }
+
+    #[test]
+    fn one_run_per_instance_and_old_logs_make_way() {
+        let mut runs = Runs::default();
+        let a = runs.start("vanilla", "26.3", "Vanilla · 26.3".into(), PathBuf::new());
+        let b = runs.start("pack", "1.21.6", "Pack · 1.21.6".into(), PathBuf::new());
+        assert!(runs.instance_active("vanilla") && runs.instance_active("pack"));
+        assert_eq!(runs.active().count(), 2);
+        assert!(!runs.any_game(), "still preparing");
+        runs.get_mut(a).unwrap().state = RunState::Ended;
+        assert!(!runs.instance_active("vanilla"));
+        assert_eq!(
+            runs.for_instance("vanilla").unwrap().id,
+            a,
+            "finished runs keep their log"
+        );
+        let a2 = runs.start("vanilla", "26.3", "Vanilla · 26.3".into(), PathBuf::new());
+        assert!(
+            runs.get(a).is_none(),
+            "the old finished run of the same instance goes"
+        );
+        assert_eq!(runs.for_instance("vanilla").unwrap().id, a2);
+        assert!(runs.get(b).is_some());
+        assert_eq!(runs.latest().unwrap().id, a2);
+    }
+
+    #[test]
+    fn vanilla_runs_tell_versions_apart() {
+        let mut runs = Runs::default();
+        let a = runs.start("vanilla", "26.3", "Vanilla · 26.3".into(), PathBuf::new());
+        let b = runs.start("vanilla", "1.8.9", "Vanilla · 1.8.9".into(), PathBuf::new());
+        assert_eq!(runs.active_for("vanilla", Some("26.3")).unwrap().id, a);
+        assert_eq!(runs.active_for("vanilla", Some("1.8.9")).unwrap().id, b);
+        assert!(runs.active_for("vanilla", Some("1.21.1")).is_none());
+        assert_eq!(runs.active_for("vanilla", None).unwrap().id, b);
+        runs.get_mut(b).unwrap().state = RunState::Ended;
+        assert_eq!(
+            runs.active_for("vanilla", None).unwrap().id,
+            a,
+            "an older copy still running counts"
+        );
+    }
+
+    #[test]
+    fn logs_are_capped() {
+        let mut runs = Runs::default();
+        let id = runs.start("x", "1.0", "X".into(), PathBuf::new());
+        let run = runs.get_mut(id).unwrap();
+        run.push_log((0..LOG_LINES + 10).map(|i| LogLine {
+            level: Level::Info,
+            text: i.to_string(),
+        }));
+        assert_eq!(run.log.len(), LOG_LINES);
+        assert_eq!(run.log.front().unwrap().text, "10");
+    }
+}

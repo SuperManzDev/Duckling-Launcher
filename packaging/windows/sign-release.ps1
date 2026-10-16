@@ -33,7 +33,7 @@ try {
 	$exes = Get-ChildItem $work -Filter "*windows*.exe"
 	if ($exes.Count -eq 0) { throw "the release has no Windows .exe files" }
 	foreach ($exe in $exes) {
-		& $signtool.FullName sign /sha1 $Thumbprint /tr $Timestamp /td sha256 /fd sha256 /d "Arctic Launcher" $exe.FullName
+		& $signtool.FullName sign /sha1 $Thumbprint /tr $Timestamp /td sha256 /fd sha256 /d "Duckling Launcher" $exe.FullName
 		if ($LASTEXITCODE -ne 0) { throw "signing $($exe.Name) failed" }
 		& $signtool.FullName verify /pa $exe.FullName
 		if ($LASTEXITCODE -ne 0) { throw "$($exe.Name) doesn't verify" }

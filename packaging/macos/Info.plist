@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>Arctic Launcher</string>
+	<string>Duckling Launcher</string>
 	<key>CFBundleDisplayName</key>
-	<string>Arctic Launcher</string>
+	<string>Duckling Launcher</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.arcticlauncher.launcher</string>
+	<string>com.ducklinglauncher.launcher</string>
 	<key>CFBundleExecutable</key>
-	<string>arctic-launcher</string>
+	<string>duckling-launcher</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
@@ -25,6 +25,6 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Arctic Launcher uses your microphone for proximity voice chat in Minecraft.</string>
+	<string>Duckling Launcher uses your microphone for proximity voice chat in Minecraft.</string>
 </dict>
 </plist>

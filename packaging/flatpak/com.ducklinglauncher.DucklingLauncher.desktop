@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Duckling Launcher
+Comment=Play Minecraft and manage your instances, mods and worlds
+Exec=duckling-launcher
+Icon=com.ducklinglauncher.DucklingLauncher
+Terminal=false
+Categories=Game;
+Keywords=Minecraft;Launcher;Mods;Fabric;
+StartupWMClass=com.ducklinglauncher.DucklingLauncher

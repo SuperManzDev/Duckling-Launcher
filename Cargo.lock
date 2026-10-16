@@ -314,15 +314,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-app"
+name = "duckling-app"
 version = "0.4.9"
 dependencies = [
  "aes-gcm",
  "arboard",
- "arctic-core",
- "arctic-share",
- "arctic-voice",
  "discord-rich-presence",
+ "duckling-core",
+ "duckling-share",
+ "duckling-voice",
  "eframe",
  "egui_extras",
  "image",
@@ -344,26 +344,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-cli"
+name = "duckling-cli"
 version = "0.4.9"
 dependencies = [
- "arctic-core",
- "arctic-share",
  "clap",
+ "duckling-core",
+ "duckling-share",
  "log",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "arctic-core"
+name = "duckling-core"
 version = "0.4.9"
 dependencies = [
  "aes-gcm",
- "arctic-mesh",
- "arctic-ping",
  "base64 0.23.1",
  "dirs",
+ "duckling-mesh",
+ "duckling-ping",
  "env_logger",
  "flate2",
  "getrandom 0.3.4",
@@ -394,13 +394,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-cosmetics"
+name = "duckling-cosmetics"
 version = "0.4.9"
 dependencies = [
- "arctic-mesh",
- "arctic-ping",
  "axum",
  "base64 0.23.1",
+ "duckling-mesh",
+ "duckling-ping",
  "env_logger",
  "hex",
  "hmac",
@@ -420,7 +420,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-mesh"
+name = "duckling-mesh"
 version = "0.4.9"
 dependencies = [
  "png",
@@ -428,7 +428,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-ping"
+name = "duckling-ping"
 version = "0.4.9"
 dependencies = [
  "base64 0.23.1",
@@ -437,7 +437,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-share"
+name = "duckling-share"
 version = "0.4.9"
 dependencies = [
  "bytes",
@@ -450,7 +450,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "arctic-voice"
+name = "duckling-voice"
 version = "0.4.9"
 dependencies = [
  "aes-gcm",
