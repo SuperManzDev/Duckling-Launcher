@@ -153,7 +153,7 @@ pub fn install_file(dirs: &DataDirs, pack: &Path, progress: Progress) -> Result<
             .by_name(INDEX)
             .map_err(|_| {
                 if curseforge {
-                    Error::Other("this is a CurseForge modpack; Arctic installs Modrinth modpacks (.mrpack). Look for the pack on Modrinth".into())
+                    Error::Other("this is a CurseForge modpack; Duckling installs Modrinth modpacks (.mrpack). Look for the pack on Modrinth".into())
                 } else {
                     Error::Other("not a Modrinth modpack (no modrinth.index.json)".into())
                 }

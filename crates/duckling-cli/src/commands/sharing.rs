@@ -1,4 +1,4 @@
-﻿//! `arctic share …` and `arctic import …`: instances, HUD layouts,
+//! `arctic share …` and `arctic import …`: instances, HUD layouts,
 //! crosshairs, client settings and whole profiles as codes, text or files.
 
 use std::path::Path;
@@ -27,7 +27,7 @@ pub fn share(ctx: &Ctx, args: &ShareArgs) -> Result<i32> {
             let code = sharing::codes::create(&base, &token, &bundle)?;
             ctx.out.emit(
                 json!({"kind": bundle.kind(), "code": code, "summary": summary}),
-                || format!("{summary}\nCode: {code}\nThey can use it with `arctic import {code}` or in the launcher."),
+                || format!("{summary}\nCode: {code}\nThey can use it with `duckling import {code}` or in the launcher."),
             );
         }
         ShareAs::Text => {
@@ -41,7 +41,7 @@ pub fn share(ctx: &Ctx, args: &ShareArgs) -> Result<i32> {
             let path = args
                 .out
                 .clone()
-                .unwrap_or_else(|| format!("arctic-{}.json", bundle.kind()).into());
+                .unwrap_or_else(|| format!("duckling-{}.json", bundle.kind()).into());
             std::fs::write(&path, bundle.to_file_text()).map_err(|e| Error::io(&path, e))?;
             ctx.out.emit(
                 json!({"kind": bundle.kind(), "file": path, "summary": summary}),

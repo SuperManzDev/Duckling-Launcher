@@ -1,4 +1,4 @@
-﻿use std::io::Write;
+use std::io::Write;
 
 use serde_json::json;
 
@@ -30,7 +30,7 @@ fn instance_round_trips_through_text_and_json() {
     assert_eq!(pack.mods.len(), 2);
     assert!(pack.mods[0].enabled && !pack.mods[1].enabled);
     let text = bundle.to_text();
-    assert!(text.starts_with("arctic1."));
+    assert!(text.starts_with("duck1."));
     assert_eq!(read(&text).unwrap(), Input::Bundle(bundle.clone()));
     // Line breaks from chat apps don't matter.
     let wrapped = format!("{}\n{}", &text[..20], &text[20..]);
@@ -173,6 +173,7 @@ fn profile_settings_are_filtered_and_checked() {
 fn pasted_input_is_recognized() {
     assert_eq!(read(" ABCD-EFGH ").unwrap(), Input::Code("abcdefgh".into()));
     assert!(read("hello there").is_err());
+    assert!(read("duck1.@@@").is_err());
     assert!(read("arctic1.@@@").is_err());
     assert!(read("{\"duckling_share\": 9, \"kind\": \"hud\"}").is_err());
     assert!(read("{\"duckling_share\": 1, \"kind\": \"worm\"}").is_err());
@@ -186,7 +187,7 @@ fn inflating_stops_at_the_limit() {
     let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::best());
     enc.write_all(&vec![b' '; 8 * 1024 * 1024]).unwrap();
     let packed = enc.finish().unwrap();
-    let text = format!("arctic1.{}", URL_SAFE_NO_PAD.encode(packed));
+    let text = format!("duck1.{}", URL_SAFE_NO_PAD.encode(packed));
     let err = read(&text).unwrap_err().to_string();
     assert!(err.contains("too big"), "{err}");
 }

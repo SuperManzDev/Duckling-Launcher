@@ -1,4 +1,4 @@
-﻿//! "Quick tip" in the sidebar: one of Arctic's features at a time, a new one every few minutes,
+//! "Quick tip" in the sidebar: one of Arctic's features at a time, a new one every few minutes,
 //! opening where it lives when clicked. Settings → "Show quick tips" hides it.
 
 use std::time::{Duration, Instant};
@@ -78,7 +78,7 @@ const TIPS: &[(&str, Option<Tab>)] = &[
         Some(Tab::Instances),
     ),
     (
-        "Short on space? Move Arctic in Settings → Storage.",
+        "Short on space? Move Duckling in Settings → Storage.",
         Some(Tab::Settings),
     ),
     (
@@ -103,7 +103,7 @@ const TIPS: &[(&str, Option<Tab>)] = &[
         Some(Tab::Settings),
     ),
     (
-        "Crashes are explained, and fixed where Arctic can.",
+        "Crashes are explained, and fixed where Duckling can.",
         Some(Tab::Logs),
     ),
     ("Every game's log is kept in Logs.", Some(Tab::Logs)),
@@ -115,8 +115,18 @@ const TIPS: &[(&str, Option<Tab>)] = &[
         "Auto Reconnect brings you back when a server drops you.",
         None,
     ),
-    ("Waypoints and a minimap come with the Arctic Client.", None),
-    ("The arctic command does it all too: arctic --help.", None),
+    (
+        "Waypoints and a minimap come with the Duckling Client.",
+        None,
+    ),
+    (
+        "The duckling command does it all too: duckling --help.",
+        None,
+    ),
+    (
+        "Quack! Ducklings swim fast and launch Minecraft even faster. 🦆",
+        None,
+    ),
 ];
 
 #[derive(Default)]

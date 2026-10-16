@@ -199,7 +199,7 @@ fn socks5(proxy: Socks, target: &Address) -> Result<TcpStream> {
                 return Err(proxy_err("refused the username or password"));
             }
         }
-        _ => return Err(proxy_err("wants a login method Arctic doesn't support")),
+        _ => return Err(proxy_err("wants a login method Duckling doesn't support")),
     }
     let mut req = vec![5, 1, 0];
     match target.host.parse::<std::net::IpAddr>() {

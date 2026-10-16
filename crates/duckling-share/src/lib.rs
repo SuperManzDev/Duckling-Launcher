@@ -26,8 +26,8 @@ const ALPN: &[u8] = b"arctic/lan-tunnel/1";
 const KIND_INFO: u8 = 0;
 const KIND_GAME: u8 = 1;
 /// Marks our own announcements so the host never re-shares a tunnel.
-const GUEST_SUFFIX: &str = " · via Arctic";
-const CODE_PREFIX: &str = "arctic-";
+const GUEST_SUFFIX: &str = " · via Duckling";
+const CODE_PREFIX: &str = "duck-";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShareEvent {
@@ -168,12 +168,13 @@ pub fn parse_code(code: &str) -> Result<EndpointId, String> {
         .filter(|c| !c.is_whitespace() && *c != '-')
         .collect::<String>()
         .to_ascii_lowercase();
-    let prefix = CODE_PREFIX.trim_end_matches('-');
-    // 52 base32 characters, optionally preceded by the prefix.
-    let body = match compact.strip_prefix(prefix) {
-        Some(rest) if rest.len() == 52 => rest,
-        _ => compact.as_str(),
-    };
+    // 52 base32 characters, optionally preceded by "duckling", "duck", or "arctic".
+    let body = compact
+        .strip_prefix("duckling")
+        .or_else(|| compact.strip_prefix("duck"))
+        .or_else(|| compact.strip_prefix("arctic"))
+        .filter(|rest| rest.len() == 52)
+        .unwrap_or(compact.as_str());
     EndpointId::from_str(body).map_err(|_| "That invite code isn't valid.".to_owned())
 }
 
@@ -195,6 +196,7 @@ mod tests {
     #[test]
     fn bad_codes_are_rejected() {
         assert!(parse_code("").is_err());
+        assert!(parse_code("duck-hello").is_err());
         assert!(parse_code("arctic-hello").is_err());
     }
 

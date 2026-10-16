@@ -1,4 +1,4 @@
-﻿//! `arctic storage`: where Arctic keeps its files, and moving them to another folder.
+//! `arctic storage`: where Arctic keeps its files, and moving them to another folder.
 
 use std::path::{Path, PathBuf};
 
@@ -90,7 +90,7 @@ fn move_to(ctx: &Ctx, folder: &str) -> Result<i32> {
         Target::Empty => {}
         Target::ArcticData => {
             return Err(Error::Other(format!(
-                "{} already has Arctic's files: `arctic storage use` it instead",
+                "{} already has Duckling's files: `duckling storage use` it instead",
                 to.display()
             )));
         }
@@ -122,10 +122,10 @@ fn use_folder(ctx: &Ctx, to: &Path) -> Result<i32> {
 fn done(ctx: &Ctx, to: &Path, old: Option<&Path>) {
     ctx.out.emit(json!({"path": to, "old": old}), || match old {
         Some(old) => format!(
-            "Arctic now keeps its files in {}. The old copy in {} is removed the next time the launcher starts.",
+            "Duckling now keeps its files in {}. The old copy in {} is removed the next time the launcher starts.",
             to.display(),
             old.display()
         ),
-        None => format!("Arctic now uses the files in {}.", to.display()),
+        None => format!("Duckling now uses the files in {}.", to.display()),
     });
 }

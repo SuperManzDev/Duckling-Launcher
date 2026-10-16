@@ -45,7 +45,7 @@ impl DucklingApp {
             widgets::field_row(ui, |ui| {
                 use duckling_core::settings::Backdrop;
                 ui.label("Background");
-                ui.selectable_value(&mut s.backdrop, Backdrop::Scenery, "Arctic scenery");
+                ui.selectable_value(&mut s.backdrop, Backdrop::Scenery, "Duckling scenery");
                 ui.selectable_value(&mut s.backdrop, Backdrop::Picture, "Your screenshot")
                     .on_hover_text("Your newest screenshot, or the version's title screen");
                 if ui

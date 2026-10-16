@@ -64,7 +64,7 @@ impl DucklingApp {
         {
             if mode == "dialog" && self.storage.dialog.is_none() && self.storage.source.is_none() {
                 self.tasks
-                    .storage_check(dirs_root.clone(), dirs_root.with_file_name("Arctic on D"));
+                    .storage_check(dirs_root.clone(), dirs_root.with_file_name("Duckling on D"));
             }
             return self
                 .storage
@@ -106,7 +106,11 @@ impl DucklingApp {
             }
         });
         match &source {
-            RootSource::Env(_) => note(ui, p, "Set by the ARCTIC_DATA_DIR environment variable."),
+            RootSource::Env(_) => note(
+                ui,
+                p,
+                "Set by the DUCKLING_DATA_DIR / ARCTIC_DATA_DIR environment variable.",
+            ),
             RootSource::Portable(_) => note(
                 ui,
                 p,

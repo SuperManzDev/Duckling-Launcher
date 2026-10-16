@@ -1,4 +1,4 @@
-﻿//! Friends: your Arctic profile (accounts linked into one person, and what
+//! Friends: your Arctic profile (accounts linked into one person, and what
 //! friends may see), friend requests, invites and the friend list with
 //! who's online and where, a Join button and invites.
 
@@ -115,7 +115,7 @@ impl DucklingApp {
                 ui.label(
                     RichText::new(
                         "No friends yet. Add someone by their friend code (or a Microsoft account's name); \
-                         they need to use Arctic too.",
+                         they need to use Duckling too.",
                     )
                         .small()
                         .color(p.muted),

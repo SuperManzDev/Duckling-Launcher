@@ -60,5 +60,12 @@ impl Splash {
             FontId::proportional(24.0),
             p.text.gamma_multiply(title_alpha),
         );
+        painter.text(
+            center + vec2(0.0, LOGO_RADIUS + 58.0 + 8.0 * (1.0 - title_alpha)),
+            Align2::CENTER_CENTER,
+            "Quacking fast. Featherlight. 🦆",
+            FontId::proportional(13.0),
+            p.muted.gamma_multiply(title_alpha),
+        );
     }
 }

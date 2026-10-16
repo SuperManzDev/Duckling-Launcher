@@ -1,4 +1,4 @@
-﻿//! Share and Import dialogs: an instance (as a mod list), the HUD layout,
+//! Share and Import dialogs: an instance (as a mod list), the HUD layout,
 //! the crosshair, all client settings, or the whole profile, as a short
 //! code, one line of text, or a .json file.
 
@@ -338,7 +338,7 @@ impl DucklingApp {
                 ui.add_space(12.0);
                 crate::widgets::row(ui, |ui| {
                     ui.label(
-                        RichText::new("Codes are kept on the Arctic server; text and files work anywhere.")
+                        RichText::new("Codes are kept on the Duckling server; text and files work anywhere.")
                             .small()
                             .color(p.muted),
                     );
@@ -389,7 +389,7 @@ impl DucklingApp {
                 self.toasts.push(Kind::Success, "Copied as text", "");
             }
             if widgets::button(ui, p, Some(Icon::Document), "Save file…", false).clicked() {
-                let name = format!("arctic-{}.json", bundle.kind());
+                let name = format!("duckling-{}.json", bundle.kind());
                 self.tasks.share_save(bundle.clone(), name);
             }
         });
@@ -417,7 +417,7 @@ impl DucklingApp {
                     }
                 });
                 ui.label(
-                    RichText::new("Copied. Friends paste it into Import (Instances tab) or run `arctic import`.")
+                    RichText::new("Copied. Friends paste it into Import (Instances tab) or run `duckling import`.")
                         .small()
                         .color(p.muted),
                 );

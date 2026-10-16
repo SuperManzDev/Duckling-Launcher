@@ -1,4 +1,4 @@
-﻿//! Proximity voice chat in the launcher. The game reports (through the
+//! Proximity voice chat in the launcher. The game reports (through the
 //! bridge, several times a second) which server it's on, where you are and
 //! where the players around you are; this joins that server's voice room
 //! on the Arctic server, connects directly to the other members, sends
@@ -210,13 +210,13 @@ impl VoiceHub {
         let st = lock(&self.state);
         match &st.session {
             Some(s) if s.engine.mic_error().is_some() => {
-                "Listening only: Arctic can't use your microphone. Check Windows Settings →                  Privacy → Microphone (\"Let desktop apps access your microphone\"), or pick                  another microphone below."
+                "Listening only: Duckling can't use your microphone. Check Windows Settings →                  Privacy → Microphone (\"Let desktop apps access your microphone\"), or pick                  another microphone below."
                     .into()
             }
             Some(s) => {
                 let n = lock(&s.members).len();
                 if n == 0 {
-                    "On, nobody else here uses Arctic voice yet".into()
+                    "On, nobody else here uses Duckling voice yet".into()
                 } else {
                     format!("On, {n} other player(s) in voice on this server")
                 }

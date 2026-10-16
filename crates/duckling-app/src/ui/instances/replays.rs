@@ -1,4 +1,4 @@
-﻿//! Replays of an instance: what the Arctic Client kept (press the replay
+//! Replays of an instance: what the Arctic Client kept (press the replay
 //! key in game). Watch one (the game starts straight into it), open the
 //! folder, or move one to trash.
 
@@ -60,7 +60,7 @@ impl DucklingApp {
                     );
                     ui.label(
                         RichText::new(
-                            "F9 saves the last 30 seconds. F10 starts or stops a recording. Both keys can be changed in Arctic's Replays settings.",
+                            "F9 saves the last 30 seconds. F10 starts or stops a recording. Both keys can be changed in Duckling's Replays settings.",
                         )
                         .color(p.muted),
                     );

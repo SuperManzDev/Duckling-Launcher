@@ -51,12 +51,12 @@ public final class Style {
 		hud = b.hud;
 	}
 
-	public static final Style ARCTIC = new Builder("arctic", "Arctic", "Deep night blue with ice accents.")
-			.accent(0xFF7DD3FC, 0xFF06223A)
-			.sky(0xFF070E1C, 0xFF142845, 0x6038E1C8)
-			.mountains(0xFF1B3354, 0xFF0C182B)
-			.surfaces(0xE00C1626, 0x407DD3FC, 0xB0182A42, 0xD8244063, 0x80111B2A, 0xC00A1422)
-			.ink(0xFFEAF4FF, 0xFF8FA6BF, 0x900A1422)
+	public static final Style ARCTIC = new Builder("duckling", "Duckling", "Warm golden yellow with duckling accents.")
+			.accent(0xFFFBBF24, 0xFF3D2800)
+			.sky(0xFF1E170A, 0xFF382910, 0x60FBBF24)
+			.mountains(0xFF4A3716, 0xFF241A0A)
+			.surfaces(0xE020160A, 0x40FBBF24, 0xB03B2A12, 0xD85A411B, 0x80261B0B, 0xC01A1207)
+			.ink(0xFFFFFBEB, 0xFFD4A359, 0x901A1207)
 			.build();
 
 	public static final Style AURORA = new Builder("aurora", "Aurora", "Violet sky with northern-light greens.")
@@ -75,7 +75,7 @@ public final class Style {
 			.ink(0xFFF2F2F2, 0xFF9A9A9A, 0x90000000)
 			.build();
 
-	public static final Style VANILLA = new Builder("vanilla", "Vanilla", "Minecraft's own menus, plus the Arctic HUD.")
+	public static final Style VANILLA = new Builder("vanilla", "Vanilla", "Minecraft's own menus, plus the Duckling HUD.")
 			.restyles(false)
 			.accent(0xFFFFFFFF, 0xFF202020)
 			.sky(0xFF101010, 0xFF2A2A2A, 0x00FFFFFF)
@@ -88,7 +88,7 @@ public final class Style {
 
 	public static Style byId(String id) {
 		for (Style s : ALL) {
-			if (s.id.equals(id)) {
+			if (s.id.equals(id) || ("arctic".equals(id) && "duckling".equals(s.id))) {
 				return s;
 			}
 		}

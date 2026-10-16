@@ -1,4 +1,4 @@
-﻿//! Sharing and backups: an instance (as a mod list), a HUD layout, a
+//! Sharing and backups: an instance (as a mod list), a HUD layout, a
 //! crosshair, all Arctic Client settings, or a whole profile, as a small
 //! JSON bundle. A bundle travels as a `.json` file, one line of text
 //! (`arctic1.…`) or a short code stored on the Arctic server.
@@ -31,7 +31,8 @@ use crate::{Error, Result};
 pub const FORMAT: u64 = 1;
 /// Largest bundle read (matches the server's limit).
 pub const MAX_JSON: usize = 256 * 1024;
-const TEXT_PREFIX: &str = "arctic1.";
+const TEXT_PREFIX: &str = "duck1.";
+const LEGACY_TEXT_PREFIX: &str = "arctic1.";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Bundle {
@@ -80,10 +81,10 @@ impl Bundle {
         let format = value
             .get("duckling_share")
             .and_then(Value::as_u64)
-            .ok_or_else(|| Error::Other("that isn't something Arctic shared".into()))?;
+            .ok_or_else(|| Error::Other("that isn't something Duckling shared".into()))?;
         if format > FORMAT {
             return Err(Error::Other(
-                "this was shared from a newer Arctic; update the launcher to use it".into(),
+                "this was shared from a newer Duckling; update the launcher to use it".into(),
             ));
         }
         let data = value.get("data").cloned().unwrap_or(Value::Null);
@@ -109,12 +110,12 @@ impl Bundle {
             Some("crosshair") => Ok(Bundle::Client(ClientPart::check(Part::Crosshair, &data)?)),
             Some("client") => Ok(Bundle::Client(ClientPart::check(Part::All, &data)?)),
             _ => Err(Error::Other(
-                "this share holds something this Arctic doesn't know; try updating".into(),
+                "this share holds something this Duckling doesn't know; try updating".into(),
             )),
         }
     }
 
-    /// One line of text: `arctic1.` + base64 of the deflated JSON.
+    /// One line of text: `duck1.` + base64 of the deflated JSON.
     pub fn to_text(&self) -> String {
         let json = self.to_value().to_string();
         let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::best());
@@ -141,7 +142,7 @@ impl Bundle {
                 (Part::Hud, None) => "A HUD layout".into(),
                 (Part::Crosshair, _) => "A crosshair".into(),
                 (Part::All, _) => format!(
-                    "Arctic Client settings ({} of them: HUD, crosshair, features, keys)",
+                    "Duckling Client settings ({} of them: HUD, crosshair, features, keys)",
                     c.values.len()
                 ),
             },
@@ -149,13 +150,16 @@ impl Bundle {
     }
 }
 
-/// Make sense of pasted text: a code, `arctic1.` text or bundle JSON.
+/// Make sense of pasted text: a code, `duck1.` text or bundle JSON.
 pub fn read(input: &str) -> Result<Input> {
     let input = input.trim();
     if input.len() > MAX_JSON * 2 {
         return Err(Error::Other("that is too long to be a share".into()));
     }
-    if let Some(packed) = input.strip_prefix(TEXT_PREFIX) {
+    if let Some(packed) = input
+        .strip_prefix(TEXT_PREFIX)
+        .or_else(|| input.strip_prefix(LEGACY_TEXT_PREFIX))
+    {
         return from_text(packed).map(Input::Bundle);
     }
     if input.starts_with('{') {

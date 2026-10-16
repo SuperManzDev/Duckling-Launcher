@@ -1,4 +1,4 @@
-﻿//! `/v1/shares`: create a short code for a bundle, and read one back.
+//! `/v1/shares`: create a short code for a bundle, and read one back.
 
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode, header};
@@ -29,7 +29,7 @@ async fn create(
         .and_then(Value::as_str)
         .filter(|k| shares::KINDS.contains(k));
     let (Some(kind), Some(1)) = (kind, bundle.get("duckling_share").and_then(Value::as_u64)) else {
-        return error(StatusCode::BAD_REQUEST, "not an Arctic share bundle");
+        return error(StatusCode::BAD_REQUEST, "not a Duckling share bundle");
     };
     // Keys come out sorted, so the same bundle always hashes the same.
     let body = bundle.to_string();

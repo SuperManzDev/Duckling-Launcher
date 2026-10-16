@@ -332,7 +332,7 @@ struct OfflineBody {
     key: String,
 }
 
-const NAME_TAKEN: &str = "this name is used by another Arctic player";
+const NAME_TAKEN: &str = "this name is used by another Duckling player";
 
 /// Offline accounts: the first launcher to use a name claims it with a key;
 /// later sign-ins need the same key.

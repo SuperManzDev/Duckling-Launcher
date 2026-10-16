@@ -820,7 +820,7 @@ impl DucklingApp {
                         if let Some(warning) = run.memory_warning() {
                             run.push_log([duckling_core::launch::logparse::LogLine {
                                 level: duckling_core::launch::logparse::Level::Warn,
-                                text: format!("──── Arctic: {warning} ────"),
+                                text: format!("──── Duckling: {warning} ────"),
                             }]);
                             let title = run.title.clone();
                             self.toasts.push(

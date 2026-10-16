@@ -1,4 +1,4 @@
-﻿//! "Play together": share a world opened to LAN with friends, or join
+//! "Play together": share a world opened to LAN with friends, or join
 //! theirs, over a peer-to-peer tunnel (`arctic-share`).
 
 use duckling_share::{LanWorld, SessionId, Share, ShareEvent};
@@ -268,7 +268,7 @@ impl DucklingApp {
                 ui.add_space(6.0);
                 let field = ui.add(
                     widgets::text_field(&mut self.together.code_input)
-                        .hint_text("arctic-xxxx-xxxx-…")
+                        .hint_text("duck-xxxx-xxxx-…")
                         .desired_width(f32::INFINITY),
                 );
                 let enter = field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));

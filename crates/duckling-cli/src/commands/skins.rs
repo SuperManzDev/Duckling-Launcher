@@ -1,4 +1,4 @@
-﻿//! `arctic skins …`: the skin library (the launcher's Cosmetics tab) and
+//! `arctic skins …`: the skin library (the launcher's Cosmetics tab) and
 //! the community gallery.
 
 use std::path::Path;
@@ -186,7 +186,7 @@ fn wear(ctx: &Ctx, account: Option<&str>, skin: Option<(Vec<u8>, Variant, String
     cosmetics::set_look(&base, &token, &look)?;
     ctx.out
         .emit(json!({"event": "wearing", "skin": name}), || match &name {
-            Some(name) => format!("{} now wears {name} for Arctic players", account.username),
+            Some(name) => format!("{} now wears {name} for Duckling players", account.username),
             None => format!("{} is back to their Minecraft skin", account.username),
         });
     Ok(())

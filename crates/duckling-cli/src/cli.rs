@@ -4,13 +4,13 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
-/// Arctic Launcher from the command line: list, install and launch vanilla
+/// Duckling Launcher from the command line: list, install and launch vanilla
 /// Minecraft, manage accounts, and open the launcher.
 #[derive(Debug, Parser)]
-#[command(name = "arctic", version, about, long_about = None)]
+#[command(name = "duckling", version, about, long_about = None)]
 pub struct Cli {
     /// Use this data directory instead of the default
-    /// (%LOCALAPPDATA%\ArcticLauncher).
+    /// (%LOCALAPPDATA%\DucklingLauncher).
     #[arg(long, global = true, value_name = "DIR", env = "DUCKLING_DATA_DIR")]
     pub data_dir: Option<PathBuf>,
 
@@ -55,9 +55,9 @@ pub enum Command {
         /// Version id, `latest` or `latest-snapshot`.
         version: String,
     },
-    /// Show where Arctic keeps its files.
+    /// Show where Duckling keeps its files.
     Paths,
-    /// Where Arctic keeps everything, and moving it to another folder or drive.
+    /// Where Duckling keeps everything, and moving it to another folder or drive.
     #[command(subcommand)]
     Storage(StorageCommand),
     /// Check GitHub for a newer launcher release.
@@ -89,11 +89,11 @@ pub enum Command {
     /// An instance's singleplayer worlds: list, import, back up, remove.
     #[command(subcommand)]
     Worlds(WorldsCommand),
-    /// Arctic Client waypoints (per world; the game shows them on its Compass).
+    /// Duckling Client waypoints (per world; the game shows them on its Compass).
     #[command(subcommand)]
     Waypoints(WaypointsCommand),
     /// Saved multiplayer servers: who's online, ping and MOTD. Join one
-    /// with `arctic launch --server <address>`.
+    /// with `duckling launch --server <address>`.
     #[command(subcommand)]
     Servers(ServersCommand),
     /// Friends: who's online and where, requests, invites, your profile.
@@ -106,7 +106,7 @@ pub enum Command {
     /// Your Minecraft skin and capes (what every server shows).
     #[command(subcommand)]
     Skin(SkinCommand),
-    /// Your Arctic look: skin, cape and cosmetics other Arctic players see.
+    /// Your Duckling look: skin, cape and cosmetics other Duckling players see.
     #[command(subcommand)]
     Look(LookCommand),
     /// Your skin library (the Cosmetics tab's skins) and the community gallery.
@@ -115,7 +115,7 @@ pub enum Command {
     /// Screenshots from every instance.
     #[command(subcommand)]
     Screenshots(ScreenshotsCommand),
-    /// Saved replays (Arctic Client). Watch one with `arctic launch --replay FILE`.
+    /// Saved replays (Duckling Client). Watch one with `duckling launch --replay FILE`.
     #[command(subcommand)]
     Replays(ReplaysCommand),
     /// Show an instance's last game log, or the launcher's.
@@ -127,7 +127,7 @@ pub enum Command {
     Share(ShareArgs),
     /// Use something shared: a code, share text or an exported .json file.
     Import {
-        /// `abcd-efgh`, `arctic1.…` text, or a file path.
+        /// `abcd-efgh`, `duck1.…` / `arctic1.…` text, or a file path.
         source: String,
         /// For HUD, crosshair and client settings: the instance to apply to
         /// (default: Vanilla).
@@ -468,7 +468,7 @@ pub enum ServersCommand {
         /// Up to 5 (`--tag smp --tag pvp`).
         #[arg(long = "tag")]
         tags: Vec<String>,
-        /// Sign in to Arctic as this account (default: the active one).
+        /// Sign in to Duckling as this account (default: the active one).
         #[arg(short, long)]
         account: Option<String>,
     },
@@ -546,7 +546,7 @@ pub enum LookCommand {
         #[arg(long)]
         account: Option<String>,
     },
-    /// Use a skin PNG for Arctic players, or `none` for your Minecraft skin.
+    /// Use a skin PNG for Duckling players, or `none` for your Minecraft skin.
     Skin {
         file: std::path::PathBuf,
         #[arg(long, value_enum)]
@@ -662,7 +662,7 @@ pub enum ShareWhat {
     /// HUD layout: which widgets are on, where, and how big.
     Hud,
     Crosshair,
-    /// All Arctic Client settings: HUD, crosshair, style, features, keys.
+    /// All Duckling Client settings: HUD, crosshair, style, features, keys.
     Client,
     /// Launcher settings, every instance and its client settings.
     Profile,
@@ -715,7 +715,7 @@ pub enum StorageCommand {
     /// Copy everything to an empty folder and use it from now on (`default`: back to the
     /// usual place). The old copy is removed when the launcher next starts.
     Move { folder: String },
-    /// Use a folder that already has Arctic's files (nothing is copied or removed).
+    /// Use a folder that already has Duckling's files (nothing is copied or removed).
     Use { folder: String },
 }
 
@@ -729,7 +729,7 @@ pub enum TogetherCommand {
     },
     /// Join a friend's world by invite code (it appears in the LAN list).
     Join {
-        /// The code your friend shared (arctic-...).
+        /// The code your friend shared (duck-...).
         code: String,
     },
 }
@@ -798,8 +798,8 @@ pub struct InstanceEditArgs {
     /// Icon color as `#rrggbb`, or `default` for the theme's.
     #[arg(long)]
     pub color: Option<String>,
-    /// Arctic Client (Fabric and Quilt instances).
-    #[arg(long, value_enum)]
+    /// Duckling Client (Fabric and Quilt instances).
+    #[arg(long, value_enum, visible_alias = "duckling-client")]
     pub arctic_client: Option<Switch>,
     /// Java executable, or `default` for the launcher's choice.
     #[arg(long)]
@@ -894,7 +894,7 @@ pub enum SkinsCommand {
         skin: String,
         file: std::path::PathBuf,
     },
-    /// Wear a library skin as your Arctic look (`none`: your Minecraft skin).
+    /// Wear a library skin as your Duckling look (`none`: your Minecraft skin).
     Wear {
         /// Skin id or name, or `none`.
         skin: String,
@@ -915,7 +915,7 @@ pub enum SkinsCommand {
     },
     /// Add a gallery skin to your library (`--wear` also puts it on).
     Take {
-        /// Gallery id (from `arctic skins gallery`).
+        /// Gallery id (from `duckling skins gallery`).
         id: String,
         #[arg(long)]
         wear: bool,
@@ -1139,7 +1139,7 @@ pub struct LaunchArgs {
     #[arg(long, value_name = "FOLDER")]
     pub world: Option<String>,
 
-    /// Watch this replay (an .mcpr file) once the game is up (Arctic Client).
+    /// Watch this replay (an .mcpr file) once the game is up (Duckling Client).
     #[arg(long, value_name = "FILE", conflicts_with_all = ["server", "world"])]
     pub replay: Option<std::path::PathBuf>,
 

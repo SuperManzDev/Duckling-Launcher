@@ -68,7 +68,7 @@ public final class TogetherLink {
 			} catch (Exception e) {
 				JsonObject failed = new JsonObject();
 				failed.addProperty("state", "idle");
-				failed.addProperty("error", "Arctic Launcher didn't answer: " + e.getMessage());
+				failed.addProperty("error", "Duckling Launcher didn't answer: " + e.getMessage());
 				state = failed;
 			}
 		});

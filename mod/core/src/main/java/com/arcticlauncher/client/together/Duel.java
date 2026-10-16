@@ -51,7 +51,7 @@ public final class Duel {
 	/** Make a duel world; the friend (may be null) is invited when it's ready. */
 	public void start(String kitId, String friendId, String friendName) {
 		if (!available()) {
-			Notices.post("Duels need Arctic Launcher", "Start the game from Arctic Launcher to duel.");
+			Notices.post("Duels need Duckling Launcher", "Start the game from Duckling Launcher to duel.");
 			return;
 		}
 		this.kit = kitId;
@@ -66,7 +66,7 @@ public final class Duel {
 	/** Join a friend's duel (their play-together code). */
 	public void join(String code) {
 		if (!link.available()) {
-			Notices.post("Joining needs Arctic Launcher", "Start the game from Arctic Launcher to join.");
+			Notices.post("Joining needs Duckling Launcher", "Start the game from Duckling Launcher to join.");
 			return;
 		}
 		link.join(code);
@@ -122,7 +122,7 @@ public final class Duel {
 				if (link.code() != null && "hosting".equals(link.stateName())) {
 					ready(link.code());
 				} else if (link.error() != null || ++polls > MAX_POLLS) {
-					fail(link.error() != null ? link.error() : "Arctic Launcher didn't start sharing.");
+					fail(link.error() != null ? link.error() : "Duckling Launcher didn't start sharing.");
 				}
 				break;
 			case READY:

@@ -132,13 +132,13 @@ pub fn check_move(from: &Path, to: &Path) -> Option<String> {
     }
     let (from_c, to_c) = (normal(from), normal(to));
     if from_c == to_c {
-        return Some("That's already where Arctic keeps its files.".into());
+        return Some("That's already where Duckling keeps its files.".into());
     }
     if to_c.starts_with(&from_c) {
-        return Some("Pick a folder outside Arctic's current folder.".into());
+        return Some("Pick a folder outside Duckling's current folder.".into());
     }
     if from_c.starts_with(&to_c) {
-        return Some("Pick a folder that doesn't contain Arctic's current folder.".into());
+        return Some("Pick a folder that doesn't contain Duckling's current folder.".into());
     }
     None
 }
@@ -278,7 +278,7 @@ fn copy_tree(
 pub fn adopt(default: &Path, to: &Path) -> Result<()> {
     if inspect(to) != Target::ArcticData {
         return Err(Error::Other(
-            "That folder doesn't hold Arctic's files.".into(),
+            "That folder doesn't hold Duckling's files.".into(),
         ));
     }
     set_chosen(default, to)

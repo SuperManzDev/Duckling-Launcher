@@ -122,7 +122,7 @@ impl DucklingApp {
         let modal = Modal::new(Id::new("migrate")).frame(super::instances::dialog_frame(p)).show(ctx, |ui| {
             ui.set_width(WIDTH);
             widgets::lift_controls(ui, p);
-            ui.label(RichText::new("Move to Arctic").size(22.0).strong().color(p.text));
+            ui.label(RichText::new("Move to Duckling").size(22.0).strong().color(p.text));
             ui.label(
                 RichText::new("Copies instances, mods, worlds and settings from other launchers. The originals stay as they are; accounts never come along.")
                     .color(p.muted),

@@ -1,4 +1,4 @@
-﻿//! The community skin gallery inside the Cosmetics tab: browse, wear with a
+//! The community skin gallery inside the Cosmetics tab: browse, wear with a
 //! click (it's added to your library too), add or report from the
 //! right-click menu; and share your own skins.
 
@@ -234,7 +234,7 @@ impl DucklingApp {
         let enabled = self.arctic_state().is_some() && !self.skins.gallery.busy;
         let share = ui
             .add_enabled(enabled, egui::Button::new("Share to gallery"))
-            .on_hover_text("Everyone can find and use it in the Arctic gallery");
+            .on_hover_text("Everyone can find and use it in the Duckling gallery");
         if share.clicked()
             && let Ok(png) = duckling_core::skins::Library::read_png(&self.skins_dir(), &entry.id)
         {

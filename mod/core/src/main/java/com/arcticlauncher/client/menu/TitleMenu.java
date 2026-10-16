@@ -49,7 +49,7 @@ public final class TitleMenu extends Page {
 		y += BUTTON_H + GAP * 3;
 		int third = (BUTTON_W - GAP * 2) / 3;
 		add(new Button(tr("menu.options", "Options"), run(MenuAction.OPTIONS))).bounds(left, y, third, BUTTON_H);
-		add(new Button("Arctic", new Runnable() {
+		add(new Button("Duckling", new Runnable() {
 			@Override
 			public void run() {
 				ArcticClient.platform().openPage(Menus.page("mods"));
@@ -91,7 +91,7 @@ public final class TitleMenu extends Page {
 	@Override
 	protected void drawAbove(Gfx g, Style s, int mx, int my) {
 		int y = height - 12;
-		g.text("Arctic Client", 6, y, s.muted, true);
+		g.text("Duckling Client", 6, y, s.muted, true);
 		String who = ArcticClient.platform().playerName();
 		g.text(who, width - 6 - g.textWidth(who), y, s.muted, true);
 	}

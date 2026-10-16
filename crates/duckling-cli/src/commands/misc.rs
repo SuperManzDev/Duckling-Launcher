@@ -1,4 +1,4 @@
-﻿//! `arctic java`, `paths`, `update`, `open`.
+//! `arctic java`, `paths`, `update`, `open`.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -12,13 +12,17 @@ use serde_json::json;
 use super::{Ctx, resolve_version};
 use crate::cli::OpenArgs;
 
-/// Env var pointing at the launcher executable, for `arctic open`.
-const LAUNCHER_EXE_ENV: &str = "ARCTIC_LAUNCHER_EXE";
-/// Names the GUI is shipped/installed under, next to `arctic.exe`.
-const LAUNCHER_EXE_NAMES: [&str; 3] = [
+/// Env var pointing at the launcher executable, for `duckling open`.
+const LAUNCHER_EXE_ENV: &str = "DUCKLING_LAUNCHER_EXE";
+const LEGACY_LAUNCHER_EXE_ENV: &str = "ARCTIC_LAUNCHER_EXE";
+/// Names the GUI is shipped/installed under, next to `duckling.exe`.
+const LAUNCHER_EXE_NAMES: [&str; 6] = [
+    "duckling-launcher.exe",
+    "Duckling Launcher.exe",
+    "duckling-launcher",
     "arctic-launcher.exe",
     "Arctic Launcher.exe",
-    "duckling-launcher",
+    "arctic-launcher",
 ];
 
 pub fn java_for(ctx: &Ctx, version: &str) -> Result<i32> {
@@ -79,7 +83,7 @@ pub fn update_check(ctx: &Ctx, beta: bool) -> Result<i32> {
             },
         ),
         None => ctx.out.emit(json!({"current": APP_VERSION, "latest": null}), || {
-            format!("Arctic Launcher {APP_VERSION} is up to date")
+            format!("Duckling Launcher {APP_VERSION} is up to date")
         }),
     }
     Ok(0)
@@ -105,13 +109,15 @@ pub fn open(ctx: &Ctx, args: &OpenArgs) -> Result<i32> {
     let child = cmd.spawn().map_err(|e| Error::io(&exe, e))?;
     ctx.out
         .emit(json!({"event": "opened", "pid": child.id()}), || {
-            "Opened Arctic Launcher".into()
+            "Opened Duckling Launcher".into()
         });
     Ok(0)
 }
 
 fn launcher_exe() -> Result<PathBuf> {
-    if let Some(path) = std::env::var_os(LAUNCHER_EXE_ENV) {
+    if let Some(path) =
+        std::env::var_os(LAUNCHER_EXE_ENV).or_else(|| std::env::var_os(LEGACY_LAUNCHER_EXE_ENV))
+    {
         return Ok(PathBuf::from(path));
     }
     let dir = std::env::current_exe()
@@ -124,7 +130,7 @@ fn launcher_exe() -> Result<PathBuf> {
         .find(|p| p.is_file())
         .ok_or_else(|| {
             Error::NotConfigured(format!(
-                "launcher executable not found next to arctic.exe; set {LAUNCHER_EXE_ENV}"
+                "launcher executable not found next to duckling.exe; set {LAUNCHER_EXE_ENV}"
             ))
         })
 }

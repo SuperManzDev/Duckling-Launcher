@@ -115,7 +115,7 @@ impl ClientPart {
         let current = load(&config_path(game_dir))?;
         if current.is_empty() {
             return Err(Error::Other(
-                "no Arctic Client settings yet: start the game with Arctic once".into(),
+                "no Duckling Client settings yet: start the game with Duckling once".into(),
             ));
         }
         Self::check(part, &Value::Object(current))
@@ -178,7 +178,7 @@ fn load(path: &Path) -> Result<Map<String, Value>> {
 
 fn bad(what: &str) -> Error {
     Error::Other(format!(
-        "these Arctic Client settings can't be used: {what}"
+        "these Duckling Client settings can't be used: {what}"
     ))
 }
 

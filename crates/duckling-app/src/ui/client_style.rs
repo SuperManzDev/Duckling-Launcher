@@ -1,4 +1,4 @@
-﻿//! Picking the Arctic Client's in-game menu style (onboarding and Settings).
+//! Picking the Arctic Client's in-game menu style (onboarding and Settings).
 
 use duckling_core::settings::{ClientStyle, Settings};
 use eframe::egui::{
@@ -27,11 +27,11 @@ struct Preview {
 fn preview(style: ClientStyle) -> Preview {
     match style {
         ClientStyle::Arctic => Preview {
-            sky_top: Color32::from_rgb(0x07, 0x0E, 0x1C),
-            sky_bottom: Color32::from_rgb(0x14, 0x28, 0x45),
-            ground: Color32::from_rgb(0x0C, 0x18, 0x2B),
-            primary: Color32::from_rgb(0x7D, 0xD3, 0xFC),
-            button: Color32::from_rgb(0x1E, 0x33, 0x50),
+            sky_top: Color32::from_rgb(0x1F, 0x1A, 0x0E),
+            sky_bottom: Color32::from_rgb(0x3B, 0x2D, 0x14),
+            ground: Color32::from_rgb(0x24, 0x1B, 0x0A),
+            primary: Color32::from_rgb(0xFB, 0xBF, 0x24),
+            button: Color32::from_rgb(0x4A, 0x38, 0x18),
         },
         ClientStyle::Aurora => Preview {
             sky_top: Color32::from_rgb(0x0B, 0x0A, 0x1C),

@@ -49,7 +49,7 @@ pub fn create(base: &str, token: &str, bundle: &Bundle) -> Result<String> {
     }
     let created: Created = resp.body_mut().with_config().limit(4096).read_json()?;
     let code = clean(&created.code)
-        .ok_or_else(|| Error::Other("the Arctic server sent a strange code".into()))?;
+        .ok_or_else(|| Error::Other("the Duckling server sent a strange code".into()))?;
     Ok(pretty(&code))
 }
 

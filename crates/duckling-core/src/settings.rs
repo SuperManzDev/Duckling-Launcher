@@ -178,7 +178,7 @@ impl ClientStyle {
 
     pub fn name(self) -> &'static str {
         match self {
-            Self::Arctic => "Arctic",
+            Self::Arctic => "Duckling",
             Self::Aurora => "Aurora",
             Self::Classic => "Classic",
             Self::Vanilla => "Vanilla",

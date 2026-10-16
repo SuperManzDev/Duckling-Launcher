@@ -405,7 +405,7 @@ fn write_stub(path: &Path, id: &str, version: &str) -> Result<()> {
         "provides": [other],
         "version": version,
         "name": "Fabric API (the parts in use)",
-        "description": "Arctic keeps only the Fabric API modules the installed mods use, to start faster.",
+        "description": "Duckling keeps only the Fabric API modules the installed mods use, to start faster.",
     });
     zip.start_file("fabric.mod.json", zip::write::SimpleFileOptions::default())
         .map_err(|e| crate::Error::Other(e.to_string()))?;

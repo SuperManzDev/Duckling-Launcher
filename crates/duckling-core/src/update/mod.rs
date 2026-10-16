@@ -180,12 +180,12 @@ fn is_required(notes: &str, current: &semver::Version) -> bool {
 pub fn download_and_apply(dirs: &DataDirs, info: &UpdateInfo, progress: Progress) -> Result<()> {
     if managed_by_flatpak() {
         return Err(Error::Other(
-            "Update Arctic Launcher through your Linux software manager.".into(),
+            "Update Duckling Launcher through your Linux software manager.".into(),
         ));
     }
     let dir = dirs.cache().join("updates");
     fs::create_dir_all(&dir).at(&dir)?;
-    let path = dir.join(format!("arctic-launcher-{}.exe", info.version));
+    let path = dir.join(format!("duckling-launcher-{}.exe", info.version));
 
     let mut resp = agent()
         .get(&info.asset_url)

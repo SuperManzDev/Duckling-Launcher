@@ -1,4 +1,4 @@
-﻿//! First-run setup: how the launcher looks and behaves, account, memory,
+//! First-run setup: how the launcher looks and behaves, account, memory,
 //! how the game looks, and what to play first. Every default someone might
 //! wonder about is a choice here. Shown once per profile, on top of the
 //! normal window so theme changes preview live behind it.
@@ -226,7 +226,7 @@ impl DucklingApp {
         heading(
             ui,
             p,
-            "How Arctic behaves",
+            "How Duckling behaves",
             "You can change these any time in Settings.",
         );
         ui.add_space(12.0);
@@ -264,7 +264,7 @@ impl DucklingApp {
         if cfg!(windows) {
             ui.checkbox(
                 &mut self.settings.tray,
-                "Keep Arctic in the system tray when closed",
+                "Keep Duckling in the system tray when closed",
             )
             .on_hover_text("Reopens instantly. Quit from the tray icon.");
         }
@@ -328,7 +328,7 @@ impl DucklingApp {
         ui.add_space(8.0);
         ui.label(
             RichText::new(
-                "Your sign-in stays on this PC, encrypted. Arctic never sees your password.",
+                "Your sign-in stays on this PC, encrypted. Duckling never sees your password.",
             )
             .small()
             .color(p.muted),
@@ -384,12 +384,12 @@ impl DucklingApp {
             ui,
             p,
             "How the game looks",
-            "The Arctic Client restyles Minecraft's menus. Press Right Shift in game for HUD widgets, features and capes.",
+            "The Duckling Client restyles Minecraft's menus. Press Right Shift in game for HUD widgets, features and capes.",
         );
         ui.add_space(10.0);
         let mut client = self.instance.arctic_mod;
         if ui
-            .checkbox(&mut client, "Play with the Arctic Client")
+            .checkbox(&mut client, "Play with the Duckling Client")
             .changed()
         {
             let id = self.instance.id.clone();
@@ -398,7 +398,7 @@ impl DucklingApp {
         if !client {
             ui.label(
                 RichText::new(
-                    "Pure vanilla: no cosmetics or capes, no playing together with friends, no Arctic menu or HUD in game.                      Turn it back on any time in Instances → Vanilla.",
+                    "Pure vanilla: no cosmetics or capes, no playing together with friends, no Duckling menu or HUD in game.                      Turn it back on any time in Instances → Vanilla.",
                 )
                 .small()
                 .color(p.warn),
@@ -453,7 +453,7 @@ impl DucklingApp {
             [] => String::new(),
         };
         let vanilla = if self.instance.arctic_mod {
-            "The latest Minecraft release, with the Arctic Client."
+            "The latest Minecraft release, with the Duckling Client."
         } else {
             "The latest Minecraft release, pure vanilla."
         };
@@ -551,14 +551,14 @@ fn welcome(ui: &mut egui::Ui, p: &Palette, now: f64) {
         ui.ctx().request_repaint();
         ui.add_space(14.0);
         ui.label(
-            RichText::new("Welcome to Arctic")
+            RichText::new("Welcome to Duckling")
                 .size(28.0)
                 .strong()
                 .color(p.text),
         );
         ui.add_space(4.0);
         ui.label(
-            RichText::new("A fast, lightweight Minecraft launcher.\nLet's get you set up. It takes about a minute.")
+            RichText::new("A fast, lightweight Minecraft launcher. 🦆\nLet's get you set up. It takes about a minute.")
                 .color(p.muted),
         );
     });

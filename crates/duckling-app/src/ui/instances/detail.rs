@@ -1,4 +1,4 @@
-﻿//! One instance's page: header, sub-tabs, and the Settings page.
+//! One instance's page: header, sub-tabs, and the Settings page.
 
 use duckling_core::instances::{self, Instance};
 use duckling_core::settings::MIN_MEMORY_MB;
@@ -258,7 +258,7 @@ impl DucklingApp {
                 }
             } else {
                 ui.label(
-                    RichText::new("Arctic downloads the right Java for each Minecraft version.")
+                    RichText::new("Duckling downloads the right Java for each Minecraft version.")
                         .color(p.muted),
                 );
             }
@@ -280,7 +280,7 @@ impl DucklingApp {
         });
     }
 
-    /// Toggle for Arctic's companion mod (Fabric and Quilt only).
+    /// Toggle for Duckling's companion mod (Fabric and Quilt only).
     fn arctic_mod_card(&mut self, ui: &mut egui::Ui, instance: &Instance) {
         use duckling_core::arctic_mod;
         use duckling_core::loaders::LoaderKind;
@@ -296,14 +296,14 @@ impl DucklingApp {
             theme::card(p).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.label(
-                    RichText::new("Arctic Client")
+                    RichText::new("Duckling Client")
                         .size(17.0)
                         .strong()
                         .color(p.text),
                 );
                 ui.label(
                     RichText::new(
-                        "The Arctic Client runs on Vanilla, Fabric and Quilt instances, not on Forge or NeoForge yet. Make a Vanilla or Fabric instance of the same version to play with it.",
+                        "The Duckling Client runs on Vanilla, Fabric and Quilt instances, not on Forge or NeoForge yet. Make a Vanilla or Fabric instance of the same version to play with it.",
                     )
                     .color(p.muted),
                 );
@@ -318,15 +318,15 @@ impl DucklingApp {
         let supported = version.as_deref().is_some_and(arctic_mod::supports);
         let (title, about, toggle) = if vanilla {
             (
-                "Arctic Client",
-                "Arctic's menus, HUD and looks in game. Minecraft runs through Fabric underneath; turn this and Performance off for pure vanilla.",
-                "Play with the Arctic Client",
+                "Duckling Client",
+                "Duckling's menus, HUD and looks in game. Minecraft runs through Fabric underneath; turn this and Performance off for pure vanilla.",
+                "Play with the Duckling Client",
             )
         } else {
             (
-                "Arctic mod",
-                "Shows everyone's Arctic looks (skins and capes) and adds an Arctic menu in game.",
-                "Install the Arctic mod",
+                "Duckling mod",
+                "Shows everyone's Duckling looks (skins and capes) and adds a Duckling menu in game.",
+                "Install the Duckling mod",
             )
         };
         ui.add_space(12.0);
@@ -361,7 +361,7 @@ impl DucklingApp {
             ui.label(RichText::new("Settings").size(17.0).strong().color(p.text));
             ui.label(
                 RichText::new(
-                    "Your server list, HUD and Arctic Client settings, and Minecraft's keys, FOV and video settings are the same in every instance that shares them, so a new one feels like the one you already set up.",
+                    "Your server list, HUD and Duckling Client settings, and Minecraft's keys, FOV and video settings are the same in every instance that shares them, so a new one feels like the one you already set up.",
                 )
                 .color(p.muted),
             );
@@ -401,7 +401,7 @@ impl DucklingApp {
             ui.label(RichText::new("Performance").size(17.0).strong().color(p.text));
             ui.label(
                 RichText::new(
-                    "Adds Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling, ModernFix and Polarium for much higher FPS and faster starts. Downloaded from Modrinth for your version (Polarium comes with Arctic); ones not updated yet are skipped.",
+                    "Adds Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling, ModernFix and Polarium for much higher FPS and faster starts. Downloaded from Modrinth for your version (Polarium comes with Duckling); ones not updated yet are skipped.",
                 )
                 .color(p.muted),
             );
