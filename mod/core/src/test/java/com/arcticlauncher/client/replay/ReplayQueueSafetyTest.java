@@ -74,6 +74,9 @@ class ReplayQueueSafetyTest {
 			Replays.liveVideo().close();
 			Replays.stopWatching();
 			if (Replays.recorder().current() != null) Replays.recorder().current().end();
+			java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+			Replays.recorder().afterWrites(done::countDown);
+			assertTrue(done.await(10, TimeUnit.SECONDS));
 			for (Map.Entry<Field, Object> e : previous.entrySet()) e.getKey().set(null, e.getValue());
 		}
 	}

@@ -44,7 +44,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Live video integration tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-      - run: chmod +x mod/gradlew && mod/gradlew -p mod/core test --info --stacktrace
+      - run: chmod +x mod/gradlew && mod/gradlew -p mod/core test --stacktrace
+      - name: Dump test reports on failure
+        if: failure()
+        run: |
+          for f in mod/core/build/test-results/test/*.xml; do
+            if [ -f "$f" ]; then
+              echo "=== $f ==="
+              cat "$f"
+            fi
+          done
 
   mod-targets:
     runs-on: ubuntu-latest

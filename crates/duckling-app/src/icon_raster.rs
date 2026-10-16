@@ -124,7 +124,7 @@ fn sample_duck(u: f32, v: f32) -> Option<(f32, f32, f32)> {
         let b = 20.0;
 
         let beak_line_dist = (v - (-0.105)).abs();
-        if beak_line_dist < 0.012 && u >= 0.20 && u <= 0.36 {
+        if beak_line_dist < 0.012 && (0.20..=0.36).contains(&u) {
             let factor = 1.0 - (beak_line_dist / 0.012);
             r -= 40.0 * factor;
             g -= 45.0 * factor;
@@ -164,7 +164,7 @@ fn sample_duck(u: f32, v: f32) -> Option<(f32, f32, f32)> {
             b += 8.0 * wing_depth;
         }
 
-        if d_wing >= -0.12 && d_wing <= 0.06 {
+        if (-0.12..=0.06).contains(&d_wing) {
             let wing_border = 1.0 - (d_wing + 0.03).abs() / 0.09;
             r -= 35.0 * wing_border;
             g -= 50.0 * wing_border;
@@ -173,9 +173,9 @@ fn sample_duck(u: f32, v: f32) -> Option<(f32, f32, f32)> {
 
         if d_blush <= 0.0 {
             let blush_k = (-d_blush / 0.045).max(0.0);
-            r = r + (255.0 - r) * blush_k * 0.45;
-            g = g * (1.0 - blush_k * 0.18);
-            b = b * (1.0 - blush_k * 0.28);
+            r += (255.0 - r) * blush_k * 0.45;
+            g *= 1.0 - blush_k * 0.18;
+            b *= 1.0 - blush_k * 0.28;
         }
 
         return Some((

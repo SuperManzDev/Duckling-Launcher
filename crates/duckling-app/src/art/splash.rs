@@ -2,8 +2,6 @@
 //! whole overlay dissolves outward to reveal the launcher. Any click or key
 //! skips it.
 
-use std::f32::consts::PI;
-
 use eframe::egui::emath::easing;
 use eframe::egui::{Align2, Context, FontId, Id, LayerId, Order, vec2};
 
