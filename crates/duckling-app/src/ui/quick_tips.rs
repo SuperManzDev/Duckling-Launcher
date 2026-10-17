@@ -21,6 +21,18 @@ const MENU_ROOM: f32 = 4.0;
 
 /// A tip and where clicking it goes (`None`: it's in game, nothing to open).
 const TIPS: &[(&str, Option<Tab>)] = &[
+    (
+        "WE LOVE SITS! Over 126 computers refurbished and donated (Canton CV 26). 🦆💻",
+        Some(Tab::About),
+    ),
+    (
+        "Quack! Duckling Launcher makes offline and online play super smooth. 🦆",
+        Some(Tab::Play),
+    ),
+    (
+        "Have old tech lying around? Donate to SITS at Canton room CV 26! 🦆",
+        Some(Tab::About),
+    ),
     ("Drag servers to put your favorites first.", Some(Tab::Play)),
     (
         "Discover servers finds new places to play.",

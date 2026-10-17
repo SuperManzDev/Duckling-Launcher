@@ -78,9 +78,7 @@ impl DucklingApp {
             )
             .on_hover_text("Off: games keep running after the launcher closes.");
             ui.checkbox(&mut s.show_sponsor, "Show supporter mentions")
-                .on_hover_text(
-                    "\"Supported by Flash Hosting\" in the sidebar, About and Play together.",
-                );
+                .on_hover_text("\"WE LOVE SITS\" in the sidebar, About and Play together.");
             ui.checkbox(&mut s.quick_tips, "Show quick tips")
                 .on_hover_text("A tip about one of Duckling's features in the sidebar, a new one every 5 minutes.");
         });

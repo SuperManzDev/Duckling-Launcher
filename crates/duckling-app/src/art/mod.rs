@@ -7,6 +7,7 @@ pub mod flakes;
 pub mod flash;
 pub mod icons;
 pub mod scenery;
+pub mod sits;
 pub mod splash;
 pub mod world;
 

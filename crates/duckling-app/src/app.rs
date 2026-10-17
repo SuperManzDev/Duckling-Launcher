@@ -150,6 +150,10 @@ pub struct DucklingApp {
     /// The suggest-a-feature form, while it's open.
     pub(crate) suggest: Option<crate::ui::suggest::SuggestForm>,
     pub(crate) profile_dialog: ProfileDialog,
+    /// SITS (Student Information Technology Services) Easter Egg Story Modal.
+    pub(crate) sits_easter_egg: bool,
+    /// Number of times user has clicked "Quack for SITS!".
+    pub(crate) sits_quacks: u32,
     /// Instances tab state (pages, mod browser, create dialog).
     pub(crate) inst: InstancesUi,
     pub(crate) update: UpdateState,
@@ -303,6 +307,8 @@ impl DucklingApp {
             client_off_confirm: None,
             suggest: None,
             profile_dialog: ProfileDialog::Closed,
+            sits_easter_egg: false,
+            sits_quacks: 0,
             inst: InstancesUi::default(),
             update,
             required_prompt: None,
