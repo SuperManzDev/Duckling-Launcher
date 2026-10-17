@@ -13,7 +13,7 @@ public final class ArcticButton {
 	private static final java.util.Map<net.minecraft.client.gui.screens.Screen, Runnable> TICKS = new java.util.WeakHashMap<>();
 
 	public static Button create() {
-		Button button = create("Arctic", () -> ArcticClient.platform().openPage(ArcticClient.arcticMenu()));
+		Button button = create("Duckling", () -> ArcticClient.platform().openPage(ArcticClient.arcticMenu()));
 		MAIN.add(button); return button;
 	}
 	public static Button create(String label, Runnable action) {
@@ -34,9 +34,9 @@ public final class ArcticButton {
 			add.accept(create("Replays", () -> ArcticClient.platform().openPage(com.arcticlauncher.client.menu.Menus.page("replays"))));
 			add.accept(create("Edit HUD", () -> ArcticClient.platform().openPage(new com.arcticlauncher.client.menu.HudEditor())));
 		} else if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) {
-			add.accept(create("Arctic servers", () -> ServerMenus.open(screen)));
+			add.accept(create("Duckling servers", () -> ServerMenus.open(screen)));
 		} else if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen) {
-			add.accept(create("Arctic disconnect", () -> ServerMenus.open(screen)));
+			add.accept(create("Duckling disconnect", () -> ServerMenus.open(screen)));
 			com.arcticlauncher.client.servers.DisconnectedPage reconnect = new com.arcticlauncher.client.servers.DisconnectedPage("", "");
 			if (reconnect.canReconnect()) {
 				Button join = create("Reconnect", reconnect::reconnect); add.accept(join);

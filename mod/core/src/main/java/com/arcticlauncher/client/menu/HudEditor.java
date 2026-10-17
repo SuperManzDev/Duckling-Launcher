@@ -204,7 +204,7 @@ public final class HudEditor extends Page {
 			return;
 		}
 		g.texture("icon", bx + PAD, by + 6, 12, 12, 0, 0, 256, 256, 256, 256);
-		g.text("§lArctic", bx + PAD + 16, by + 8, s.text, false);
+		g.text("§lDuckling", bx + PAD + 16, by + 8, s.text, false);
 		String version = ArcticClient.platform().minecraftVersion();
 		g.text(version, bx + BAR_W - PAD - g.textWidth(version), by + 8, s.muted, false);
 	}

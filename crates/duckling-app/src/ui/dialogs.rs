@@ -127,10 +127,14 @@ impl DucklingApp {
         let AddAccount::Offline { name } = &mut self.add_account else {
             return;
         };
-        ui.label(RichText::new("Choose a username").color(p.muted));
+        ui.label(RichText::new("Player Nickname").size(17.0).strong());
+        ui.label(
+            RichText::new("Enter your in-game nickname (1–16 characters, letters/digits/_):")
+                .color(p.muted),
+        );
         let response = ui.add(
             widgets::text_field(name)
-                .hint_text("Steve")
+                .hint_text("PlayerName")
                 .char_limit(16)
                 .desired_width(f32::INFINITY),
         );
@@ -154,12 +158,12 @@ impl DucklingApp {
         let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
         let name = name.clone();
         crate::widgets::row(ui, |ui| {
-            if crate::widgets::button(ui, p, None, "Back", false).clicked() {
-                self.add_account = AddAccount::Choose;
+            if crate::widgets::button(ui, p, None, "Cancel", false).clicked() {
+                self.add_account = AddAccount::Closed;
             }
             let add = ui
                 .add_enabled_ui(valid, |ui| {
-                    widgets::button(ui, p, Some(Icon::Plus), "Add", true)
+                    widgets::button(ui, p, Some(Icon::Check), "Save Nickname", true)
                 })
                 .inner;
             if valid
@@ -169,8 +173,8 @@ impl DucklingApp {
                 self.add_account = AddAccount::Closed;
                 self.toasts.push(
                     Kind::Success,
-                    format!("Added {}", account.username),
-                    "Offline account",
+                    format!("Playing as {}", account.username),
+                    "Offline nickname",
                 );
                 self.offer_profile_link(&account);
                 self.accounts.upsert(account);

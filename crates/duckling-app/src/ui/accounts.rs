@@ -1,4 +1,4 @@
-﻿//! Accounts tab: a grid of account cards plus an "Add account" card.
+//! Accounts tab: a grid of account cards plus an "Add account" card.
 
 use eframe::egui::{self, Align2, CornerRadius, FontId, Sense, Shape, Stroke, vec2};
 
@@ -107,7 +107,46 @@ impl DucklingApp {
                 color.gamma_multiply(hover),
             );
         }
-        if trash_response.on_hover_text("Remove account").clicked() {
+
+        // Edit button for offline accounts (bottom-right next to trash).
+        let mut edit_clicked = false;
+        if !account.is_microsoft() {
+            let edit = egui::Rect::from_center_size(
+                rect.right_bottom() + vec2(-54.0, -22.0),
+                vec2(28.0, 28.0),
+            );
+            let edit_response = ui.interact(edit, response.id.with("edit"), Sense::click());
+            if hover > 0.01 {
+                let color = if edit_response.hovered() {
+                    p.accent
+                } else {
+                    p.muted
+                };
+                let painter = ui.painter();
+                painter.rect_filled(
+                    edit,
+                    CornerRadius::same(8),
+                    p.surface_hover.gamma_multiply(hover),
+                );
+                icons::draw(
+                    painter,
+                    Icon::Edit,
+                    edit.shrink(7.0),
+                    color.gamma_multiply(hover),
+                );
+            }
+            if edit_response.on_hover_text("Change nickname").clicked() {
+                edit_clicked = true;
+            }
+        }
+        if edit_clicked {
+            #[cfg(feature = "offline-accounts")]
+            {
+                self.add_account = AddAccount::Offline {
+                    name: account.username.clone(),
+                };
+            }
+        } else if trash_response.on_hover_text("Remove account").clicked() {
             self.remove_confirm = Some(account.id.clone());
         } else if response.clicked() && !active {
             self.accounts.set_active(&account.id);

@@ -492,7 +492,7 @@ pub fn find(dirs: &DataDirs, query: &str) -> Result<Instance> {
         .find(|i| i.id == query || i.name.eq_ignore_ascii_case(query))
         .ok_or_else(|| {
             Error::Other(format!(
-                "no instance named '{query}' (see `arctic instances list`)"
+                "no instance named '{query}' (see `duckling instances list`)"
             ))
         })
 }

@@ -23,6 +23,8 @@ msa.json
 # Launcher data when running in portable mode / dev data dirs
 /data/
 portable.txt
+Duckling-Portable*
+*.zip
 
 # AI assistant / local tooling notes (never committed)
 CLAUDE.md

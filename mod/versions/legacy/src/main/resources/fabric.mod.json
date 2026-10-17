@@ -2,12 +2,12 @@
 	"schemaVersion": 1,
 	"id": "arctic",
 	"version": "${version}",
-	"name": "Arctic Client",
-	"description": "Arctic Launcher's client: Arctic menus, HUD widgets, friends and more.",
-	"authors": ["Arctic Launcher contributors"],
+	"name": "Duckling Client",
+	"description": "Duckling Launcher's client: Duckling menus, HUD widgets, friends and more.",
+	"authors": ["Duckling Launcher contributors"],
 	"contact": {
-		"homepage": "https://arcticlauncher.com",
-		"sources": "https://github.com/brksfrb/arctic-launcher"
+		"homepage": "https://ducklinglauncher.com",
+		"sources": "https://github.com/SuperManzDev/Duckling-Launcher"
 	},
 	"license": "GPL-3.0-or-later",
 	"icon": "assets/arctic/icon.png",

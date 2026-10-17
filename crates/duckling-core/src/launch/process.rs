@@ -180,9 +180,9 @@ pub fn terminate(pid: u32) {
 
 /// What the game's process is called on Windows and macOS.
 const CLIENT_PROCESS: &str = if cfg!(windows) {
-    "Arctic Client.exe"
+    "Duckling Client.exe"
 } else {
-    "arctic-client"
+    "duckling-client"
 };
 
 /// Discord marks any `javaw.exe` (macOS: `java`) running Minecraft as
@@ -228,7 +228,7 @@ fn branded_java(java: &Path) -> PathBuf {
 /// (A junction isn't enough: recorders see the path it leads to.)
 #[cfg(windows)]
 fn in_named_folder(exe: &Path) -> PathBuf {
-    const NAME: &str = "Arctic Client";
+    const NAME: &str = "Duckling Client";
     let named = (|| {
         let bin = exe.parent()?;
         let runtime = bin.parent()?;
@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     #[cfg(any(windows, target_os = "macos"))]
-    fn the_game_runs_as_arctic_client() {
+    fn the_game_runs_as_duckling_client() {
         let dir = tempfile::tempdir().unwrap();
         let java = dir
             .path()
@@ -414,7 +414,7 @@ mod tests {
         let named = branded_java(&bin.join(java.file_name().unwrap()));
         if cfg!(windows) {
             assert!(
-                named.ends_with(format!("Arctic Client/bin/{CLIENT_PROCESS}")),
+                named.ends_with(format!("Duckling Client/bin/{CLIENT_PROCESS}")),
                 "{}",
                 named.display()
             );

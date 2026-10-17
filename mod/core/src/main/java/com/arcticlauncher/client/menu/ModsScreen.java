@@ -162,7 +162,7 @@ final class ModsScreen extends Page {
 		Skin.panel(g, s, px, py, px + pw, py + ph);
 		int x = px + TabPage.PAD;
 		g.texture("icon", x, py + (TabPage.HEADER - LOGO) / 2, LOGO, LOGO, 0, 0, 256, 256, 256, 256);
-		g.text("§lArctic", x + LOGO + 6, py + 10, s.text, false);
+		g.text("§lDuckling", x + LOGO + 6, py + 10, s.text, false);
 		g.text("Mods", x + LOGO + 6, py + 22, s.muted, false);
 		g.fill(x, py + TabPage.HEADER, px + pw - TabPage.PAD, py + TabPage.HEADER + 1, s.border);
 		if (shown == 0) {

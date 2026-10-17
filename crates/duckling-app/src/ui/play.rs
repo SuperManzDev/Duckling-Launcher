@@ -43,6 +43,18 @@ impl DucklingApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     self.account_chip(ui);
                     ui.add_space(4.0);
+                    if let Some(account) = self.accounts.active() {
+                        if !account.is_microsoft() {
+                            #[cfg(feature = "offline-accounts")]
+                            if widgets::icon_button(ui, p, Icon::Edit, "Change nickname").clicked()
+                            {
+                                self.add_account = AddAccount::Offline {
+                                    name: account.username.clone(),
+                                };
+                            }
+                            ui.add_space(4.0);
+                        }
+                    }
                     if widgets::icon_button(ui, p, Icon::Gear, "Instance settings").clicked() {
                         let now = ui.input(|i| i.time);
                         self.set_tab(Tab::Instances, now);
@@ -272,8 +284,13 @@ impl DucklingApp {
             text,
             p.text,
         );
+        let tooltip = if account.is_microsoft() {
+            "Switch account"
+        } else {
+            "Switch account (or click pencil to change nickname)"
+        };
         if response
-            .on_hover_text("Switch account")
+            .on_hover_text(tooltip)
             .on_hover_cursor(CursorIcon::PointingHand)
             .clicked()
         {

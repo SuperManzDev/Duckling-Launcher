@@ -47,6 +47,6 @@ abstract class TitleScreenMixin extends Screen {
 
 	@ModifyArg(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screen/TitleScreen;drawWithShadow(Lnet/minecraft/client/font/TextRenderer;Ljava/lang/String;III)V"), index = 1)
 	private String arctic$clientName(String text) {
-		return ArcticClient.restyles() && text.startsWith("Minecraft ") ? "Arctic Client" : text;
+		return ArcticClient.restyles() && text.startsWith("Minecraft ") ? "Duckling Client" : text;
 	}
 }

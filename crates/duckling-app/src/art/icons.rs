@@ -37,6 +37,8 @@ pub enum Icon {
     Share,
     /// Arrow down into a tray.
     Import,
+    /// A pencil: edit / rename.
+    Edit,
 }
 
 /// Draw `icon` centered in `rect` (square-ish, ~16-24 px works best).
@@ -290,6 +292,18 @@ pub fn draw(painter: &Painter, icon: Icon, rect: Rect, color: Color32) {
         Icon::Stop => {
             let r = Rect::from_center_size(c, vec2(1.1, 1.1) * s);
             painter.rect_filled(r, 2.0, color);
+        }
+        Icon::Edit => {
+            let pts = [
+                vec2(-0.7, 0.7),
+                vec2(-0.4, 0.7),
+                vec2(0.65, -0.35),
+                vec2(0.35, -0.65),
+                vec2(-0.7, 0.4),
+            ];
+            poly(&pts, true);
+            line(vec2(0.1, -0.4), vec2(0.4, -0.1));
+            line(vec2(-0.7, 0.7), vec2(-0.45, 0.45));
         }
     }
 }
